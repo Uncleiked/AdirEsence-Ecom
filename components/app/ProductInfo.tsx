@@ -50,6 +50,7 @@ export function ProductInfo({ product }: ProductInfoProps) {
           price={product.price ?? 0}
           image={imageUrl ?? undefined}
           stock={product.stock ?? 0}
+          slug={product.slug ?? ""}
         />
         <AskAISimilarButton productName={product.name ?? "this product"} />
       </div>

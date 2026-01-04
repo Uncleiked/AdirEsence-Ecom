@@ -1,10 +1,16 @@
 import { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
+import { buttonVariants } from "./button";
 
 interface EmptyStateProps {
   icon: LucideIcon;
   title: string;
   description: string;
+  action?: {
+    label: string;
+    href: string;
+  };
   size?: "sm" | "md" | "lg";
   className?: string;
 }
@@ -13,6 +19,7 @@ export function EmptyState({
   icon: Icon,
   title,
   description,
+  action,
   size = "md",
   className,
 }: EmptyStateProps) {
@@ -69,6 +76,17 @@ export function EmptyState({
       >
         {description}
       </p>
+      {action && (
+        <Link
+          href={action.href}
+          className={cn(
+            buttonVariants({ variant: "outline", size: "sm" }),
+            "mt-6"
+          )}
+        >
+          {action.label}
+        </Link>
+      )}
     </div>
   );
 }

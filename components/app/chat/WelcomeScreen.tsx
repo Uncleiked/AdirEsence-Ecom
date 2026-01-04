@@ -7,7 +7,7 @@ interface WelcomeScreenProps {
 
 const productSuggestions = [
   "Show me oak tables",
-  "Leather sofas under £1000",
+  "Leather sofas under ₦100,000",
   "What chairs do you have?",
 ];
 

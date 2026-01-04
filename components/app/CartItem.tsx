@@ -57,7 +57,7 @@ export function CartItem({ item, stockInfo }: CartItemProps) {
       <div className="flex flex-1 flex-col">
         <div className="flex justify-between">
           <Link
-            href={`/products/${item.productId}`}
+            href={`/products/${item.slug ?? item.productId}`} // Fallback for legacy items
             className={cn(
               "font-medium text-zinc-900 hover:text-zinc-600 dark:text-zinc-100 dark:hover:text-zinc-300",
               isOutOfStock && "text-zinc-400 dark:text-zinc-500",
@@ -91,6 +91,7 @@ export function CartItem({ item, stockInfo }: CartItemProps) {
                 price={item.price}
                 image={item.image}
                 stock={currentStock}
+                slug={item.slug ?? ""}
               />
             </div>
           )}

@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn, formatPrice } from "@/lib/utils";
+import { InteractiveBackground } from "@/components/ui/interactive-background";
 import type { FEATURED_PRODUCTS_QUERYResult } from "@/sanity.types";
 
 type FeaturedProduct = FEATURED_PRODUCTS_QUERYResult[number];
@@ -130,14 +131,22 @@ function FeaturedSlide({ product }: FeaturedSlideProps) {
           </div>
         )}
 
-        {/* Gradient overlay for image edge blending */}
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-zinc-900/90 dark:to-zinc-950/90 hidden md:block" />
-        <div className="absolute inset-0 bg-gradient-to-t from-zinc-900/90 via-transparent to-transparent md:hidden" />
+        {/* Gradient overlay for image edge blending - Seamless transition to black */}
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-white dark:to-black hidden md:block" />
+        <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent dark:from-black md:hidden" />
       </div>
-
+      
       {/* Content Section - Right side (40% on desktop) */}
-      <div className="flex w-full flex-col justify-center px-6 py-8 md:w-2/5 md:px-10 lg:px-16">
-        {product.category && (
+      <div className="relative flex w-full flex-col justify-center px-6 py-8 md:w-2/5 md:px-10 lg:px-16 overflow-hidden bg-white dark:bg-black">
+        {/* Interactive Starlight Background - Dark Mode Only (or adaptive) */}
+        <div className="absolute inset-0 -z-10 block">
+           <InteractiveBackground />
+        </div>
+        {/* Light mode alternative: Subtle gradient or keeping it clean as per 'vice-versa' request */}
+        {/* <div className="absolute inset-0 -z-10 dark:hidden bg-gradient-to-br from-zinc-100 to-white" /> */}
+
+        <div className="relative z-10">
+          {product.category && (
           <Badge
             variant="secondary"
             className="mb-4 w-fit bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"
@@ -146,17 +155,17 @@ function FeaturedSlide({ product }: FeaturedSlideProps) {
           </Badge>
         )}
 
-        <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl lg:text-4xl">
+        <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-3xl lg:text-4xl">
           {product.name}
         </h2>
 
         {product.description && (
-          <p className="mt-4 line-clamp-3 text-sm text-zinc-300 sm:text-base lg:text-lg">
+          <p className="mt-4 line-clamp-3 text-sm text-zinc-600 dark:text-zinc-300 sm:text-base lg:text-lg">
             {product.description}
           </p>
         )}
 
-        <p className="mt-6 text-3xl font-bold text-white lg:text-4xl">
+        <p className="mt-6 text-3xl font-bold text-zinc-900 dark:text-white lg:text-4xl">
           {formatPrice(product.price)}
         </p>
 
@@ -164,13 +173,14 @@ function FeaturedSlide({ product }: FeaturedSlideProps) {
           <Button
             asChild
             size="lg"
-            className="bg-white text-zinc-900 hover:bg-zinc-100"
+            className="bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
           >
             <Link href={`/products/${product.slug}`}>
               Shop Now
-              <ArrowRight className="ml-2 h-4 w-4" />
+              <ArrowRight className="ml-2 h-4 w-4 text-white dark:text-zinc-900" />
             </Link>
           </Button>
+        </div>
         </div>
       </div>
     </div>

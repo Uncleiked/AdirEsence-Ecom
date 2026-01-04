@@ -12,6 +12,7 @@ interface AddToCartButtonProps {
   price: number;
   image?: string;
   stock: number;
+  slug: string;
   className?: string;
 }
 
@@ -21,6 +22,7 @@ export function AddToCartButton({
   price,
   image,
   stock,
+  slug,
   className,
 }: AddToCartButtonProps) {
   const { addItem, updateQuantity } = useCartActions();
@@ -32,7 +34,7 @@ export function AddToCartButton({
 
   const handleAdd = () => {
     if (quantityInCart < stock) {
-      addItem({ productId, name, price, image }, 1);
+      addItem({ productId, name, price, image, slug }, 1);
       toast.success(`Added ${name}`);
     }
   };

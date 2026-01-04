@@ -15,7 +15,11 @@ export function formatPrice(
   amount: number | null | undefined,
   currency = "₦"
 ): string {
-  return `${currency}${(amount ?? 0).toFixed(2)}`;
+  if (amount === null || amount === undefined) return `${currency}0`;
+  return `${currency}${amount.toLocaleString("en-NG", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  })}`;
 }
 
 type DateFormatOption = "short" | "long" | "datetime";

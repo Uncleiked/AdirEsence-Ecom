@@ -5,6 +5,7 @@ import { PanelLeftClose, PanelLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductFilters } from "./ProductFilters";
 import { ProductGrid } from "./ProductGrid";
+import { ScrollReveal } from "@/components/ui/scroll-reveal";
 import type {
   ALL_CATEGORIES_QUERYResult,
   FILTER_PRODUCTS_BY_NAME_QUERYResult,
@@ -70,12 +71,16 @@ export function ProductSection({
             filtersOpen ? "w-full lg:w-72 lg:opacity-100" : "hidden lg:hidden"
           }`}
         >
-          <ProductFilters categories={categories} />
+          <ScrollReveal animation="slide-left" duration={0.8}>
+             <ProductFilters categories={categories} />
+          </ScrollReveal>
         </aside>
 
         {/* Product Grid - expands to full width when filters hidden */}
         <main className="flex-1 transition-all duration-300">
-          <ProductGrid products={products} />
+           <ScrollReveal animation="slide-right" delay={0.5} duration={0.8}>
+              <ProductGrid products={products} />
+           </ScrollReveal>
         </main>
       </div>
     </div>

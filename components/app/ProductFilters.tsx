@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useState, useMemo } from "react";
+import { useCallback, useState, useMemo, useEffect } from "react";
 import { X } from "lucide-react";
+import { formatPrice } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -22,6 +23,9 @@ interface ProductFiltersProps {
   categories: ALL_CATEGORIES_QUERYResult;
 }
 
+// Max price constant
+const MAX_PRICE = 1000000;
+
 export function ProductFilters({ categories }: ProductFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -35,7 +39,7 @@ export function ProductFilters({ categories }: ProductFiltersProps) {
       material: searchParams.get("material") ?? "",
       sort: searchParams.get("sort") ?? "name",
       minPrice: Number(searchParams.get("minPrice")) || 0,
-      maxPrice: Number(searchParams.get("maxPrice")) || 5000,
+      maxPrice: Number(searchParams.get("maxPrice")) || MAX_PRICE,
       inStock: searchParams.get("inStock") === "true",
     }),
     [searchParams],
@@ -56,25 +60,17 @@ export function ProductFilters({ categories }: ProductFiltersProps) {
     urlMaxPrice,
   ]);
 
-  // Reset price range when URL changes (componentDidUpdate pattern)
-  if (priceRange[0] !== urlMinPrice || priceRange[1] !== urlMaxPrice) {
-    // Check if this is a URL update (not a local slider drag)
-    const isUrlUpdate =
-      (urlMinPrice === 0 && urlMaxPrice === 5000) || // Reset case
-      priceRange[0] === urlMinPrice ||
-      priceRange[1] === urlMaxPrice; // Partial update
-
-    if (isUrlUpdate) {
-      setPriceRange([urlMinPrice, urlMaxPrice]);
-    }
-  }
+  // Sync state with URL params
+  useEffect(() => {
+    setPriceRange([urlMinPrice, urlMaxPrice]);
+  }, [urlMinPrice, urlMaxPrice]);
 
   // Check which filters are active
   const isSearchActive = !!currentSearch;
   const isCategoryActive = !!currentCategory;
   const isColorActive = !!currentColor;
   const isMaterialActive = !!currentMaterial;
-  const isPriceActive = urlMinPrice > 0 || urlMaxPrice < 5000;
+  const isPriceActive = urlMinPrice > 0 || urlMaxPrice < MAX_PRICE;
   const isInStockActive = currentInStock;
 
   const hasActiveFilters =
@@ -291,18 +287,18 @@ export function ProductFilters({ categories }: ProductFiltersProps) {
           filterKey="price"
           onClear={clearSingleFilter}
         >
-          Price Range: £{priceRange[0]} - £{priceRange[1]}
+          Price Range: {formatPrice(priceRange[0])} - {formatPrice(priceRange[1])}
         </FilterLabel>
         <Slider
           min={0}
-          max={5000}
+          max={MAX_PRICE}
           step={100}
           value={priceRange}
           onValueChange={(value) => setPriceRange(value as [number, number])}
           onValueCommit={([min, max]) =>
             updateParams({
               minPrice: min > 0 ? min : null,
-              maxPrice: max < 5000 ? max : null,
+              maxPrice: max < MAX_PRICE ? max : null,
             })
           }
           className={`mt-4 ${isPriceActive ? "[&_[role=slider]]:border-amber-500 [&_[role=slider]]:ring-amber-500" : ""}`}

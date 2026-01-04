@@ -14,10 +14,17 @@ export function CategoryTiles({
   categories,
   activeCategory,
 }: CategoryTilesProps) {
+  // Duplicate categories to create seamless loop
+  const tileList = [...categories, ...categories, ...categories]; // Triple for safety on wide screens
+
   return (
-    <div className="relative">
-      {/* Horizontal scrolling container - full width with edge padding */}
-      <div className="flex gap-4 overflow-x-auto  py-4 pl-8 pr-4 sm:pl-12 sm:pr-6 lg:pl-10 lg:pr-8 scrollbar-hide">
+    <div className="relative w-full overflow-hidden py-8">
+      {/* Mask for fade effect on edges */}
+      <div className="absolute left-0 top-0 z-10 h-full w-20 bg-gradient-to-r from-zinc-50 to-transparent dark:from-zinc-900" />
+      <div className="absolute right-0 top-0 z-10 h-full w-20 bg-gradient-to-l from-zinc-50 to-transparent dark:from-zinc-900" />
+
+      {/* Marquee Container */}
+      <div className="flex w-max animate-marquee gap-4 hover:[animation-play-state:paused] mx-auto">
         {/* All Products tile */}
         <Link
           href="/"
@@ -49,13 +56,15 @@ export function CategoryTiles({
         </Link>
 
         {/* Category tiles */}
-        {categories.map((category) => {
+        {tileList.map((category, index) => {
+          // Use index in key to allow duplicates
+          const key = `${category._id}-${index}`;
           const isActive = activeCategory === category.slug;
           const imageUrl = category.image?.asset?.url;
 
           return (
             <Link
-              key={category._id}
+              key={key}
               href={`/?category=${category.slug}`}
               className={`group relative flex-shrink-0 overflow-hidden rounded-xl transition-all duration-300 ${
                 isActive

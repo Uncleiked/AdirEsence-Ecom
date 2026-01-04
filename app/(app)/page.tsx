@@ -2,6 +2,9 @@ import { CategoryTiles } from "@/components/app/CategoryTiles";
 import { FeaturedCarousel } from "@/components/app/FeaturedCarousel";
 import { FeaturedCarouselSkeleton } from "@/components/app/FeaturedCarouselSkeleton";
 import { ProductSection } from "@/components/app/ProductSection";
+import { ScrollReveal } from "@/components/ui/scroll-reveal";
+import { InteractiveBackground } from "@/components/ui/interactive-background";
+// import { Button } from "@/components/ui/button";
 import { ALL_CATEGORIES_QUERY } from "@/lib/sanity/queries/categories";
 import { FEATURED_PRODUCTS_QUERY, FILTER_PRODUCTS_BY_NAME_QUERY, FILTER_PRODUCTS_BY_PRICE_ASC_QUERY, FILTER_PRODUCTS_BY_PRICE_DESC_QUERY, FILTER_PRODUCTS_BY_RELEVANCE_QUERY } from "@/lib/sanity/queries/products";
 import { sanityFetch } from "@/sanity/lib/live";
@@ -66,57 +69,66 @@ export default async function HomePage({ searchParams }: PageProps) {
     },
   });
 
-  console.log(products)
 
   // Fetch categories for filter sidebar
   const { data: categories } = await sanityFetch({
     query: ALL_CATEGORIES_QUERY,
   });
 
-  console.log(categories)
 
   // Fetch featured products for carousel
   const { data: featuredProducts } = await sanityFetch({
     query: FEATURED_PRODUCTS_QUERY,
   });
 
-  console.log(featuredProducts)
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-900">
       {/* Featured Products Carousel */}
       {featuredProducts.length > 0 && (
-        <Suspense fallback={<FeaturedCarouselSkeleton />}>
-          <FeaturedCarousel products={featuredProducts} />
-        </Suspense>
+        <ScrollReveal animation="fade-up">
+          <Suspense fallback={<FeaturedCarouselSkeleton />}>
+            <FeaturedCarousel products={featuredProducts} />
+          </Suspense>
+        </ScrollReveal>
       )}
 
-         {/* Page Banner */}
-      <div className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-        <div className="mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-            Shop {categorySlug ? categorySlug : "All Products"}
-          </h1>
-          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-            Premium furniture for your home
-          </p>
+         {/* Page Banner & Category Tiles - Starlight Background Container */}
+      <div className="relative border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-black overflow-hidden">
+        {/* Starlight Background - Dark Mode Only */}
+        <div className="absolute inset-0 z-0 block">
+           <InteractiveBackground />
         </div>
+        
+        <div className="relative z-10">
+          <ScrollReveal animation="slide-right">
+            <div className="mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
+              <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+                Shop {categorySlug ? categorySlug : "All Products"}
+              </h1>
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                Premium furniture for your home
+              </p>
+            </div >
 
-        {/* Category Tiles - Full width */}
-        <div className="mt-6">
-          <CategoryTiles
-            categories={categories}
-            activeCategory={categorySlug || undefined}
-          />
+            {/* Category Tiles - Full width */}
+            <div className="mt-6">
+              <CategoryTiles
+                categories={categories}
+                activeCategory={categorySlug || undefined}
+              />
+            </div>
+          </ScrollReveal>
         </div>
       </div>
 
+       {/* Product Section - Removed single ScrollReveal wrapper to inside ProductSection */}
        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <ProductSection
-          categories={categories}
-          products={products}
-          searchQuery={searchQuery}
-        />
+          <ProductSection
+            categories={categories}
+            products={products}
+            searchQuery={searchQuery}
+          />
       </div>
     </div>
   );

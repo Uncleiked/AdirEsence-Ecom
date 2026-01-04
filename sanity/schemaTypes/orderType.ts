@@ -57,7 +57,7 @@ export const orderType = defineType({
             prepare({ title, quantity, price, media }) {
               return {
                 title: title ?? "Product",
-                subtitle: `Qty: ${quantity} • £${price}`,
+                subtitle: `Qty: ${quantity} • ₦${price}`,
                 media,
               };
             },
@@ -140,7 +140,7 @@ export const orderType = defineType({
     prepare({ orderNumber, email, total, status }) {
       return {
         title: `Order ${orderNumber ?? "N/A"}`,
-        subtitle: `${email ?? "No email"} • £${total ?? 0} • ${status ?? "paid"}`,
+        subtitle: `${email ?? "No email"} • ₦${total ?? 0} • ${status ?? "paid"}`,
       };
     },
   },

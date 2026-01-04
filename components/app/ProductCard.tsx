@@ -136,6 +136,7 @@ export function ProductCard({ product }: ProductCardProps) {
           price={product.price ?? 0}
           image={mainImageUrl ?? undefined}
           stock={stock}
+          slug={product.slug ?? ""}
         />
       </CardFooter>
     </Card>
