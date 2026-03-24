@@ -11,10 +11,10 @@ import type { ORDERS_BY_USER_QUERYResult } from "@/sanity.types";
 
 const getMyOrdersSchema = z.object({
   status: z
-    .enum(["", ...ORDER_STATUS_VALUES])
+    .enum(["any", ...ORDER_STATUS_VALUES])
     .optional()
-    .default("")
-    .describe("Filter orders by status (leave empty for all orders)"),
+    .default("any")
+    .describe("Filter orders by status. Use 'any' for all orders."),
 });
 
 export interface OrderSummary {
@@ -53,8 +53,11 @@ export function createGetMyOrdersTool(userId: string | null) {
       "Get the current user's orders. Can optionally filter by order status. Only works for authenticated users.",
     inputSchema: getMyOrdersSchema,
     execute: async ({ status }) => {
+      // Normalize "any" sentinel value to empty string
+      const normalizedStatus = status === "any" ? "" : (status ?? "");
+
       console.log("[GetMyOrders] Fetching orders for user:", userId, {
-        status,
+        status: normalizedStatus,
       });
 
       try {
@@ -67,9 +70,9 @@ export function createGetMyOrdersTool(userId: string | null) {
 
         // Filter by status if provided
         let filteredOrders = orders as ORDERS_BY_USER_QUERYResult;
-        if (status) {
+        if (normalizedStatus) {
           filteredOrders = filteredOrders.filter(
-            (order) => order.status === status
+            (order) => order.status === normalizedStatus
           );
         }
 

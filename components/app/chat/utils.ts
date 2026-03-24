@@ -1,4 +1,4 @@
-import type { UIMessage } from "@ai-sdk/react";
+import type { UIMessage } from "ai";
 import type { ToolCallPart } from "./types";
 
 // Extract text content from message parts
@@ -7,8 +7,8 @@ export function getMessageText(message: UIMessage): string {
     return "";
   }
   return message.parts
-    .filter((part: any) => part.type === "text")
-    .map((part: any) => (part as { type: "text"; text: string }).text)
+    .filter((part) => part.type === "text")
+    .map((part) => (part as { type: "text"; text: string }).text)
     .join("\n");
 }
 
@@ -18,8 +18,8 @@ export function getToolParts(message: UIMessage): ToolCallPart[] {
     return [];
   }
   return message.parts
-    .filter((part: any) => part.type.startsWith("tool-"))
-    .map((part: any) => part as unknown as ToolCallPart);
+    .filter((part) => part.type.startsWith("tool-"))
+    .map((part) => part as unknown as ToolCallPart);
 }
 
 // Get human-readable tool name

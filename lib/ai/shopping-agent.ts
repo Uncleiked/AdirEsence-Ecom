@@ -1,4 +1,5 @@
-import { gateway, type Tool, ToolLoopAgent } from "ai";
+import { type Tool, ToolLoopAgent } from "ai";
+import { google } from "@ai-sdk/google";
 import { searchProductsTool } from "./tools/search-products";
 import { createGetMyOrdersTool } from "./tools/get-my-orders";
 
@@ -202,7 +203,7 @@ export function createShoppingAgent({ userId }: ShoppingAgentOptions) {
   }
 
   return new ToolLoopAgent({
-    model: gateway("anthropic/claude-sonnet-4.5"),
+    model: google("gemini-2.0-flash"),
     instructions,
     tools,
   });

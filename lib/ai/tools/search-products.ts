@@ -24,15 +24,15 @@ const productSearchSchema = z.object({
       "Filter by category slug (e.g., 'sofas', 'tables', 'chairs', 'storage')"
     ),
   material: z
-    .enum(["", ...MATERIAL_VALUES])
+    .enum(["any", ...MATERIAL_VALUES])
     .optional()
-    .default("")
-    .describe("Filter by material type"),
+    .default("any")
+    .describe("Filter by material type. Use 'any' for no filter."),
   color: z
-    .enum(["", ...COLOR_VALUES])
+    .enum(["any", ...COLOR_VALUES])
     .optional()
-    .default("")
-    .describe("Filter by color"),
+    .default("any")
+    .describe("Filter by color. Use 'any' for no filter."),
   minPrice: z
     .number()
     .optional()
@@ -50,11 +50,15 @@ export const searchProductsTool = tool({
     "Search for products in the furniture store. Can search by name, description, or category, and filter by material, color, and price range. Returns product details including stock availability.",
   inputSchema: productSearchSchema,
   execute: async ({ query, category, material, color, minPrice, maxPrice }) => {
+    // Normalize "any" sentinel values to empty strings for Sanity query
+    const normalizedMaterial = material === "any" ? "" : (material ?? "");
+    const normalizedColor = color === "any" ? "" : (color ?? "");
+
     console.log("[SearchProducts] Query received:", {
       query,
       category,
-      material,
-      color,
+      material: normalizedMaterial,
+      color: normalizedColor,
       minPrice,
       maxPrice,
     });
@@ -65,8 +69,8 @@ export const searchProductsTool = tool({
         params: {
           searchQuery: query || "",
           categorySlug: category || "",
-          material: material || "",
-          color: color || "",
+          material: normalizedMaterial,
+          color: normalizedColor,
           minPrice: minPrice || 0,
           maxPrice: maxPrice || 0,
         },
