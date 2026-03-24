@@ -12,7 +12,9 @@
     "typegen": "sanity schema extract && sanity typegen generate --enforce-required-fields"
   },
   "dependencies": {
+    "@ai-sdk/google": "^3.0.53",
     "@ai-sdk/react": "^3.0.6",
+    "@ai-sdk/vercel": "^2.0.39",
     "@clerk/nextjs": "^6.36.5",
     "@gsap/react": "^2.1.2",
     "@hookform/resolvers": "^5.2.2",
@@ -44,7 +46,7 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "@sanity/image-url": "^1.2.0",
     "@sanity/vision": "^4.22.0",
-    "ai": "^6.0.6",
+    "ai": "^6.0.137",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",

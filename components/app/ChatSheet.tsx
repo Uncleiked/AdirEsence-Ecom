@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useChat } from "@ai-sdk/react";
+import { useChat, type UIMessage as Message } from "@ai-sdk/react";
 import { useAuth } from "@clerk/nextjs";
 import { Sparkles, Send, Loader2, X, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -88,7 +88,7 @@ export function ChatSheet() {
             />
           ) : (
             <div className="space-y-4">
-              {messages.map((message) => {
+              {messages.map((message: Message) => {
                 const content = getMessageText(message);
                 const toolParts = getToolParts(message);
                 const hasContent = content.length > 0;
