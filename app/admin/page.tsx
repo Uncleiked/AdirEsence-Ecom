@@ -9,6 +9,8 @@ import { LowStockAlert } from "@/components/admin/LowStockAlert";
 import { RecentOrders } from "@/components/admin/RecentOrders";
 import { getDashboardStats } from "@/sanity/lib/admin-queries";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminDashboard() {
   const stats = await getDashboardStats();
 

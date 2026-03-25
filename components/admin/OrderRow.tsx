@@ -2,14 +2,14 @@
 
 import { Suspense } from "react";
 import Link from "next/link";
+import { useDocumentProjection, type DocumentHandle } from "@sanity/sdk-react";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getOrderStatus } from "@/lib/constants/orderStatus";
 import { formatPrice, formatDate, formatOrderNumber } from "@/lib/utils";
 
-export interface OrderData {
-  _id: string; // The Sanity document ID
+interface OrderProjection {
   orderNumber: string;
   email: string;
   total: number;
@@ -18,32 +18,49 @@ export interface OrderData {
   itemCount: number;
 }
 
-export function OrderRow({ order }: { order: OrderData }) {
-  const status = getOrderStatus(order.status);
+function OrderRowContent(handle: DocumentHandle) {
+  const { data } = useDocumentProjection<OrderProjection>({
+    ...handle,
+    projection: `{
+      orderNumber,
+      email,
+      total,
+      status,
+      createdAt,
+      "itemCount": count(items)
+    }`,
+  });
+
+  if (!data) return null;
+
+  const status = getOrderStatus(data.status);
   const StatusIcon = status.icon;
 
   return (
     <TableRow className="group transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+      {/* Order Info - Mobile: includes email, items, total */}
       <TableCell className="py-3 sm:py-4">
-        <Link href={`/admin/orders/${order._id}`} className="block">
+        <Link href={`/admin/orders/${handle.documentId}`} className="block">
           <div className="flex items-center justify-between gap-2 sm:block">
             <span className="font-medium text-zinc-900 dark:text-zinc-100">
-              #{formatOrderNumber(order.orderNumber)}
+              #{formatOrderNumber(data.orderNumber)}
             </span>
+            {/* Mobile: Total inline */}
             <span className="font-medium text-zinc-900 dark:text-zinc-100 sm:hidden">
-              {formatPrice(order.total)}
+              {formatPrice(data.total)}
             </span>
           </div>
+          {/* Mobile: Email and items */}
           <div className="mt-1 sm:hidden">
             <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
-              {order.email}
+              {data.email}
             </p>
             <p className="mt-0.5 text-xs text-zinc-400 dark:text-zinc-500">
-              {order.itemCount} {order.itemCount === 1 ? "item" : "items"}
-              {order.createdAt && (
+              {data.itemCount} {data.itemCount === 1 ? "item" : "items"}
+              {data.createdAt && (
                 <>
                   {" · "}
-                  {formatDate(order.createdAt, "short")}
+                  {formatDate(data.createdAt, "short")}
                 </>
               )}
             </p>
@@ -51,30 +68,34 @@ export function OrderRow({ order }: { order: OrderData }) {
         </Link>
       </TableCell>
 
+      {/* Email - Desktop only */}
       <TableCell className="hidden py-4 text-zinc-500 dark:text-zinc-400 sm:table-cell">
         <Link
-          href={`/admin/orders/${order._id}`}
+          href={`/admin/orders/${handle.documentId}`}
           className="block truncate"
         >
-          {order.email}
+          {data.email}
         </Link>
       </TableCell>
 
+      {/* Items - Desktop only */}
       <TableCell className="hidden py-4 text-center md:table-cell">
-        <Link href={`/admin/orders/${order._id}`} className="block">
-          {order.itemCount}
+        <Link href={`/admin/orders/${handle.documentId}`} className="block">
+          {data.itemCount}
         </Link>
       </TableCell>
 
+      {/* Total - Desktop only */}
       <TableCell className="hidden py-4 font-medium text-zinc-900 dark:text-zinc-100 sm:table-cell">
-        <Link href={`/admin/orders/${order._id}`} className="block">
-          {formatPrice(order.total)}
+        <Link href={`/admin/orders/${handle.documentId}`} className="block">
+          {formatPrice(data.total)}
         </Link>
       </TableCell>
 
+      {/* Status - Always visible */}
       <TableCell className="py-3 sm:py-4">
         <Link
-          href={`/admin/orders/${order._id}`}
+          href={`/admin/orders/${handle.documentId}`}
           className="flex justify-center sm:justify-start"
         >
           <Badge
@@ -86,16 +107,17 @@ export function OrderRow({ order }: { order: OrderData }) {
         </Link>
       </TableCell>
 
+      {/* Date - Desktop only */}
       <TableCell className="hidden py-4 text-zinc-500 dark:text-zinc-400 md:table-cell">
-        <Link href={`/admin/orders/${order._id}`} className="block">
-          {formatDate(order.createdAt, "long", "—")}
+        <Link href={`/admin/orders/${handle.documentId}`} className="block">
+          {formatDate(data.createdAt, "long", "—")}
         </Link>
       </TableCell>
     </TableRow>
   );
 }
 
-export function OrderRowSkeleton() {
+function OrderRowSkeleton() {
   return (
     <TableRow>
       <TableCell className="py-3 sm:py-4">
@@ -130,3 +152,13 @@ export function OrderRowSkeleton() {
     </TableRow>
   );
 }
+
+export function OrderRow(props: DocumentHandle) {
+  return (
+    <Suspense fallback={<OrderRowSkeleton />}>
+      <OrderRowContent {...props} />
+    </Suspense>
+  );
+}
+
+export { OrderRowSkeleton };
