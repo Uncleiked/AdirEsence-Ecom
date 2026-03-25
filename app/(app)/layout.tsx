@@ -10,8 +10,7 @@ import { AppShell } from "@/components/app/AppShell";
 
 function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ClerkProvider>
-      <CartStoreProvider>
+    <CartStoreProvider>
         <ChatStoreProvider>
           <AppShell>
             <Header />
@@ -23,7 +22,6 @@ function AppLayout({ children }: { children: React.ReactNode }) {
           <SanityLive />
         </ChatStoreProvider>
       </CartStoreProvider>
-    </ClerkProvider>
   );
 }
 
