@@ -1,52 +1,44 @@
 "use client";
 
-import { Suspense } from "react";
-import {
-  useDocument,
-  useEditDocument,
-  type DocumentHandle,
-} from "@sanity/sdk-react";
+import { useState } from "react";
 import { Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { toggleProductFeatured } from "@/sanity/lib/admin-actions";
 
-interface FeaturedToggleProps extends DocumentHandle {}
+export function FeaturedToggle({ id, initialFeatured }: { id: string, initialFeatured: boolean }) {
+  const [featured, setFeatured] = useState(initialFeatured);
+  const [isPending, setIsPending] = useState(false);
 
-function FeaturedToggleContent(handle: FeaturedToggleProps) {
-  const { data: featured } = useDocument({ ...handle, path: "featured" });
-  const editFeatured = useEditDocument({ ...handle, path: "featured" });
-
-  const isFeatured = featured as boolean;
+  const handleToggle = async () => {
+    setIsPending(true);
+    const newValue = !featured;
+    setFeatured(newValue); // Optimistic UI update
+    
+    const result = await toggleProductFeatured(id, newValue);
+    if (!result.success) {
+      setFeatured(featured); // Revert if failed
+    }
+    setIsPending(false);
+  };
 
   return (
     <Button
       variant="ghost"
       size="icon"
       className="h-8 w-8"
-      onClick={() => editFeatured(!isFeatured)}
-      title={isFeatured ? "Remove from featured" : "Add to featured"}
+      onClick={handleToggle}
+      disabled={isPending}
+      title={featured ? "Remove from featured" : "Add to featured"}
     >
       <Star
         className={cn(
           "h-4 w-4 transition-colors",
-          isFeatured
+          featured
             ? "fill-amber-400 text-amber-400"
             : "text-zinc-300 dark:text-zinc-600",
         )}
       />
     </Button>
-  );
-}
-
-function FeaturedToggleSkeleton() {
-  return <Skeleton className="h-8 w-8" />;
-}
-
-export function FeaturedToggle(props: FeaturedToggleProps) {
-  return (
-    <Suspense fallback={<FeaturedToggleSkeleton />}>
-      <FeaturedToggleContent {...props} />
-    </Suspense>
   );
 }

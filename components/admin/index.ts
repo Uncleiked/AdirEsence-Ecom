@@ -19,3 +19,4 @@ export {
 export { ImageUploader } from "./ImageUploader";
 export { DeleteButton } from "./DeleteButton";
 export { OrderTableHeader, ProductTableHeader } from "./table-headers";
+export { ProductEditor } from "./ProductEditor";

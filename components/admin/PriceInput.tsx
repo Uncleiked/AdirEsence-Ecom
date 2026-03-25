@@ -1,19 +1,17 @@
 "use client";
 
-import { Suspense } from "react";
-import {
-  useDocument,
-  useEditDocument,
-  type DocumentHandle,
-} from "@sanity/sdk-react";
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
+import { updateProductPrice } from "@/sanity/lib/admin-actions";
 
-interface PriceInputProps extends DocumentHandle {}
+export function PriceInput({ id, initialPrice }: { id: string, initialPrice: number }) {
+  const [price, setPrice] = useState(initialPrice);
 
-function PriceInputContent(handle: PriceInputProps) {
-  const { data: price } = useDocument({ ...handle, path: "price" });
-  const editPrice = useEditDocument({ ...handle, path: "price" });
+  const handleBlur = async () => {
+    if (price !== initialPrice) {
+      await updateProductPrice(id, price);
+    }
+  };
 
   return (
     <div className="flex items-center gap-1">
@@ -22,22 +20,11 @@ function PriceInputContent(handle: PriceInputProps) {
         type="number"
         min={0}
         step={0.01}
-        value={(price as number) ?? 0}
-        onChange={(e) => editPrice(parseFloat(e.target.value) || 0)}
+        value={price}
+        onChange={(e) => setPrice(parseFloat(e.target.value) || 0)}
+        onBlur={handleBlur}
         className="h-8 w-24 text-right"
       />
     </div>
-  );
-}
-
-function PriceInputSkeleton() {
-  return <Skeleton className="h-8 w-24" />;
-}
-
-export function PriceInput(props: PriceInputProps) {
-  return (
-    <Suspense fallback={<PriceInputSkeleton />}>
-      <PriceInputContent {...props} />
-    </Suspense>
   );
 }

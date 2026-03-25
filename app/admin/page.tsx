@@ -1,13 +1,5 @@
-"use client";
-
-import { useTransition } from "react";
-import { useRouter } from "next/navigation";
-import {
-  useApplyDocumentActions,
-  createDocumentHandle,
-  createDocument,
-} from "@sanity/sdk-react";
-import { Package, ShoppingCart, TrendingUp, Plus, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { Package, ShoppingCart, TrendingUp, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   StatCard,
@@ -15,22 +7,10 @@ import {
   RecentOrders,
   AIInsightsCard,
 } from "@/components/admin";
+import { getDashboardStats } from "@/sanity/lib/admin-queries";
 
-export default function AdminDashboard() {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const apply = useApplyDocumentActions();
-
-  const handleCreateProduct = () => {
-    startTransition(async () => {
-      const newDocHandle = createDocumentHandle({
-        documentId: crypto.randomUUID(),
-        documentType: "product",
-      });
-      await apply(createDocument(newDocHandle));
-      router.push(`/admin/inventory/${newDocHandle.documentId}`);
-    });
-  };
+export default async function AdminDashboard() {
+  const stats = await getDashboardStats();
 
   return (
     <div className="space-y-6 sm:space-y-8">
@@ -44,18 +24,12 @@ export default function AdminDashboard() {
             Overview of your store
           </p>
         </div>
-        <Button
-          onClick={handleCreateProduct}
-          disabled={isPending}
-          className="w-full sm:w-auto"
-        >
-          {isPending ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
+        <Link href="/admin/inventory/new" className="w-full sm:w-auto">
+          <Button className="w-full sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
-          )}
-          New Product
-        </Button>
+            New Product
+          </Button>
+        </Link>
       </div>
 
       {/* AI Insights */}
@@ -66,20 +40,19 @@ export default function AdminDashboard() {
         <StatCard
           title="Total Products"
           icon={Package}
-          documentType="product"
+          count={stats.totalProducts}
           href="/admin/inventory"
         />
         <StatCard
           title="Total Orders"
           icon={ShoppingCart}
-          documentType="order"
+          count={stats.totalOrders}
           href="/admin/orders"
         />
         <StatCard
           title="Low Stock Items"
           icon={TrendingUp}
-          documentType="product"
-          filter="stock <= 5"
+          count={stats.lowStockProducts}
           href="/admin/inventory"
         />
       </div>
