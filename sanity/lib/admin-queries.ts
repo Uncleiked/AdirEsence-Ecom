@@ -7,6 +7,8 @@ export async function getDashboardStats() {
   const query = groq`{
     "totalRevenue": math::sum(*[_type == "order" && status != "cancelled"].total),
     "totalOrders": count(*[_type == "order"]),
+    "totalProducts": count(*[_type == "product"]),
+    "lowStockProducts": count(*[_type == "product" && stock <= 5]),
     "newCustomers": count(*[_type == "customer"]),
     "returnRate": 0 // Placeholder, implement actual logic if needed
   }`;

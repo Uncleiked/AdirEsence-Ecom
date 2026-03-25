@@ -7,6 +7,8 @@ export const metadata = {
   description: "Your order has been placed successfully",
 };
 
+export const dynamic = "force-dynamic";
+
 interface SuccessPageProps {
   searchParams: Promise<{ session_id?: string }>;
 }
