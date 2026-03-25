@@ -3,10 +3,10 @@ import { Package, ShoppingCart, TrendingUp, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   StatCard,
-  LowStockAlert,
-  RecentOrders,
   AIInsightsCard,
 } from "@/components/admin";
+import { LowStockAlert } from "@/components/admin/LowStockAlert";
+import { RecentOrders } from "@/components/admin/RecentOrders";
 import { getDashboardStats } from "@/sanity/lib/admin-queries";
 
 export default async function AdminDashboard() {
