@@ -9,7 +9,10 @@ interface EmptyStateProps {
   description: string;
   action?: {
     label: string;
-    href: string;
+    href?: string;
+    onClick?: () => void;
+    disabled?: boolean;
+    icon?: LucideIcon;
   };
   size?: "sm" | "md" | "lg";
   className?: string;
@@ -76,7 +79,7 @@ export function EmptyState({
       >
         {description}
       </p>
-      {action && (
+      {action && action.href ? (
         <Link
           href={action.href}
           className={cn(
@@ -84,9 +87,22 @@ export function EmptyState({
             "mt-6"
           )}
         >
+          {action.icon && <action.icon className="mr-2 h-4 w-4" />}
           {action.label}
         </Link>
-      )}
+      ) : action && action.onClick ? (
+        <button
+          onClick={action.onClick}
+          disabled={action.disabled}
+          className={cn(
+            buttonVariants({ variant: "outline", size: "sm" }),
+            "mt-6"
+          )}
+        >
+          {action.icon && <action.icon className="mr-2 h-4 w-4" />}
+          {action.label}
+        </button>
+      ) : null}
     </div>
   );
 }

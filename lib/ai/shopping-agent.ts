@@ -19,8 +19,8 @@ The searchProducts tool accepts these parameters:
 | category | string | Category slug: "", "sofas", "tables", "chairs", "storage" |
 | material | enum | "", "wood", "metal", "fabric", "leather", "glass" |
 | color | enum | "", "black", "white", "oak", "walnut", "grey", "natural" |
-| minPrice | number | Minimum price in GBP (0 = no minimum) |
-| maxPrice | number | Maximum price in GBP (0 = no maximum) |
+| minPrice | number | Minimum price in NGN (0 = no minimum) |
+| maxPrice | number | Maximum price in NGN (0 = no maximum) |
 
 ### How to Search
 
@@ -32,7 +32,7 @@ The searchProducts tool accepts these parameters:
 }
 \`\`\`
 
-**For "leather sofas under £1000":**
+**For "leather sofas under ₦1000000":**
 \`\`\`json
 {
   "query": "",
@@ -117,7 +117,7 @@ If the search is too narrow (few results), try again with just the category:
 ## Presenting Results
 
 The tool returns products with these fields:
-- name, price, priceFormatted (e.g., "£599.00")
+- name, price, priceFormatted (e.g., "₦599,000.00")
 - category, material, color, dimensions
 - stockStatus: "in_stock", "low_stock", or "out_of_stock"
 - stockMessage: Human-readable stock info
@@ -125,7 +125,7 @@ The tool returns products with these fields:
 
 ### Format products like this:
 
-**[Product Name](/products/slug)** - £599.00
+**[Product Name](/products/slug)** - ₦599,000.00
 - Material: Oak wood
 - Dimensions: 180cm x 90cm x 75cm
 - ✅ In stock (12 available)
@@ -139,7 +139,7 @@ The tool returns products with these fields:
 - Be warm and helpful
 - Keep responses concise
 - Use bullet points for product features
-- Always include prices in GBP (£)
+- Always include prices in NGN (₦)
 - Link to products using markdown: [Name](/products/slug)`;
 
 const ordersInstructions = `

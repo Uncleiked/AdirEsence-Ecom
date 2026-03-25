@@ -8,8 +8,8 @@ export function cn(...inputs: ClassValue[]) {
 /**
  * Format a price amount with currency symbol
  * @param amount - The price amount (can be null/undefined)
- * @param currency - Currency symbol (default: "£")
- * @returns Formatted price string (e.g., "£599.99")
+ * @param currency - Currency symbol (default: "₦")
+ * @returns Formatted price string (e.g., "₦599,000")
  */
 export function formatPrice(
   amount: number | null | undefined,
@@ -53,7 +53,7 @@ export function formatDate(
 ): string {
   if (!date) return fallback;
   return new Date(date).toLocaleDateString(
-    "en-GB",
+    "en-NG",
     DATE_FORMAT_OPTIONS[format]
   );
 }

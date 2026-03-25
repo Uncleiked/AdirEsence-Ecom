@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { client, writeClient } from "@/sanity/lib/client";
 import { ORDER_BY_STRIPE_PAYMENT_ID_QUERY } from "@/lib/sanity/queries/orders";
+import type { Order } from "@/sanity.types";
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error("STRIPE_SECRET_KEY is not defined");
@@ -123,7 +124,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       : undefined;
 
     // Create order in Sanity with customer reference
-    const order = await writeClient.create({
+    const orderData: Omit<Order, "_id" | "_createdAt" | "_updatedAt" | "_rev"> = {
       _type: "order",
       orderNumber,
       ...(sanityCustomerId && {
@@ -140,7 +141,9 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       stripePaymentId,
       address,
       createdAt: new Date().toISOString(),
-    });
+    };
+
+    const order = await writeClient.create(orderData);
 
     console.log(`Order created: ${order._id} (${orderNumber})`);
 

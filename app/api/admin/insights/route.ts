@@ -1,4 +1,5 @@
-import { generateText, gateway } from "ai";
+import { generateText } from "ai";
+import { google } from "@ai-sdk/google";
 import { client } from "@/sanity/lib/client";
 import {
   ORDERS_LAST_7_DAYS_QUERY,
@@ -211,7 +212,7 @@ export async function GET() {
 
     // Generate AI insights
     const { text } = await generateText({
-      model: gateway("anthropic/claude-sonnet-4"),
+      model: google("gemini-2.5-flash"),
       system: `You are an expert e-commerce analytics assistant. Analyze the provided store data and generate actionable insights for the store admin.
 
 Your response must be valid JSON with this exact structure:
@@ -238,7 +239,7 @@ Guidelines:
 - Prioritize actionable insights
 - Keep highlights, alerts, and recommendations concise (under 100 characters each)
 - Focus on what the admin can do TODAY
-- Use £ for currency`,
+- Use ₦ for currency`,
       prompt: `Analyze this e-commerce store data and provide insights:
 
 ${JSON.stringify(dataSummary, null, 2)}
@@ -276,10 +277,10 @@ Generate insights in the required JSON format.`,
       // Fallback insights if parsing fails
       insights = {
         salesTrends: {
-          summary: `Revenue this week: £${currentRevenue.toFixed(2)} (${revenueChange > 0 ? "+" : ""}${revenueChange.toFixed(1)}% vs last week)`,
+          summary: `Revenue this week: ₦${currentRevenue.toFixed(2)} (${revenueChange > 0 ? "+" : ""}${revenueChange.toFixed(1)}% vs last week)`,
           highlights: [
             `${revenuePeriod.currentOrderCount || 0} orders this week`,
-            `Average order value: £${avgOrderValue.toFixed(2)}`,
+            `Average order value: ₦${avgOrderValue.toFixed(2)}`,
             topProducts[0]
               ? `Top seller: ${topProducts[0].name}`
               : "No sales data yet",
