@@ -27,5 +27,5 @@ export const writeClient = createClient({
   dataset,
   apiVersion,
   useCdn: false,
-  token: process.env.SANITY_API_WRITE_TOKEN || process.env.NEXT_PUBLIC_SANITY_API_TOKEN,
+  token: process.env.SANITY_API_WRITE_TOKEN,
 });

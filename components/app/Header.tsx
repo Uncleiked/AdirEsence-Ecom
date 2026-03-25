@@ -17,8 +17,8 @@ export function Header() {
     <header className="sticky top-0 z-50 border-b border-zinc-200 bg-white/80 backdrop-blur-md shadow-xl dark:border-zinc-800 dark:bg-zinc-950/80">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
-          <span className="text-xl font-bold text-amber-700 dark:text-amber-700 hover:from-amber-600 hover:to-orange-600">
+        <Link href="/" className="flex items-center gap-2 shrink-0">
+          <span className="text-lg sm:text-xl font-bold text-amber-700 dark:text-amber-700 hover:from-amber-600 hover:to-orange-600">
             AdirEssence
           </span>
         </Link>
@@ -27,7 +27,7 @@ export function Header() {
         <div className="flex items-center gap-2">
           {/* My Orders - Only when signed in */}
           <SignedIn>
-            <Button asChild>
+            <Button asChild className="md:flex">
               <Link href="/orders" className="flex items-center gap-2">
                 <Package className="h-5 w-5" />
                 <span className="text-sm font-medium">My Orders</span>
@@ -39,10 +39,10 @@ export function Header() {
           {!isChatOpen && (
             <Button
               onClick={openChat}
-              className="gap-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-200/50 transition-all hover:from-amber-600 hover:to-orange-600 hover:shadow-lg hover:shadow-amber-300/50 dark:shadow-amber-900/30 dark:hover:shadow-amber-800/40"
+              className="gap-1.5 sm:gap-2 px-3 sm:px-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-200/50 transition-all hover:from-amber-600 hover:to-orange-600 hover:shadow-lg hover:shadow-amber-300/50 dark:shadow-amber-900/30 dark:hover:shadow-amber-800/40"
             >
               <Sparkles className="h-4 w-4" />
-              <span className="text-sm font-medium">Ask AI</span>
+              <span className="hidden sm:inline-block text-sm font-medium">Ask AI</span>
             </Button>
           )}
 
