@@ -8,7 +8,9 @@ export async function getDashboardStats() {
     "totalRevenue": math::sum(*[_type == "order" && status != "cancelled"].total),
     "totalOrders": count(*[_type == "order"]),
     "newCustomers": count(*[_type == "customer"]),
-    "returnRate": 0 // Placeholder, implement actual logic if needed
+    "returnRate": 0, // Placeholder, implement actual logic if needed
+    "totalProducts": count(*[_type == "product"]),
+    "lowStockProducts": count(*[_type == "product" && stock <= 5])
   }`;
   return client.fetch(query);
 }

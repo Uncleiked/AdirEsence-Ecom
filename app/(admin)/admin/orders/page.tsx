@@ -16,8 +16,6 @@ import {
 } from "@/components/admin";
 import { ORDER_STATUS_TABS } from "@/lib/constants/orderStatus";
 
-export const dynamic = "force-dynamic";
-
 interface OrderListContentProps {
   statusFilter: string;
   searchFilter?: string;

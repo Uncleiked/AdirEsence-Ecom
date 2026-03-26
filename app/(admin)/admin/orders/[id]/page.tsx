@@ -12,9 +12,12 @@ import {
   Edit2,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StatusSelect } from "@/components/admin/StatusSelect";
-import { AddressEditor } from "@/components/admin/AddressEditor";
-import { PublishButton, RevertButton } from "@/components/admin/PublishButton";
+import {
+  StatusSelect,
+  AddressEditor,
+  PublishButton,
+  RevertButton,
+} from "@/components/admin";
 import { formatPrice, formatDate } from "@/lib/utils";
 
 interface OrderDetailProjection {

@@ -1,7 +1,13 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, Suspense } from "react";
 import Image from "next/image";
+import {
+  useDocument,
+  useEditDocument,
+  useClient,
+  type DocumentHandle,
+} from "@sanity/sdk-react";
 import {
   Upload,
   X,
@@ -11,8 +17,8 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { uploadImage, updateProductImages } from "@/sanity/lib/admin-actions";
 
 interface SanityImageAsset {
   _type: "image";
@@ -32,22 +38,16 @@ interface ImageWithUrl {
   } | null;
 }
 
-interface ImageUploaderProps {
-  id: string;
-  initialImages?: ImageWithUrl[];
-}
-
-export function ImageUploader({ id, initialImages = [] }: ImageUploaderProps) {
+function ImageUploaderContent(handle: DocumentHandle) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string | null>(null);
-  const [currentImages, setCurrentImages] = useState<ImageWithUrl[]>(initialImages);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const saveImages = async (newImagesList: any[]) => {
-    setCurrentImages(newImagesList);
-    // Persist immediately on reorder/delete/upload
-    await updateProductImages(id, newImagesList);
-  };
+  const client = useClient({ apiVersion: "2024-01-01" });
+  const { data: images } = useDocument({ ...handle, path: "images" });
+  const editImages = useEditDocument({ ...handle, path: "images" });
+
+  const currentImages = (images as ImageWithUrl[] | null) ?? [];
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -57,33 +57,32 @@ export function ImageUploader({ id, initialImages = [] }: ImageUploaderProps) {
     setUploadProgress(`Uploading ${files.length} image(s)...`);
 
     try {
-      const newImages: any[] = [];
+      const newImages: SanityImageAsset[] = [];
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         setUploadProgress(`Uploading ${i + 1} of ${files.length}...`);
 
-        const formData = new FormData();
-        formData.append("file", file);
-        
-        const result = await uploadImage(formData);
+        // Upload the asset to Sanity
+        const asset = await client.assets.upload("image", file, {
+          filename: file.name,
+        });
 
-        if (result.success && result.asset) {
-          // Create the image object with a unique key
-          newImages.push({
-            _type: "image",
-            _key: crypto.randomUUID(),
-            asset: {
-              _type: "reference",
-              _ref: result.asset._id,
-              url: result.asset.url,
-            },
-          });
-        }
+        // Create the image object with a unique key
+        newImages.push({
+          _type: "image",
+          _key: crypto.randomUUID(),
+          asset: {
+            _type: "reference",
+            _ref: asset._id,
+          },
+        });
       }
 
       // Append new images to existing ones
-      await saveImages([...currentImages, ...newImages]);
+      const updatedImages = [...currentImages, ...newImages];
+      editImages(updatedImages);
+
       setUploadProgress(null);
     } catch (error) {
       console.error("Upload failed:", error);
@@ -91,6 +90,7 @@ export function ImageUploader({ id, initialImages = [] }: ImageUploaderProps) {
       setTimeout(() => setUploadProgress(null), 3000);
     } finally {
       setIsUploading(false);
+      // Reset the file input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -101,7 +101,7 @@ export function ImageUploader({ id, initialImages = [] }: ImageUploaderProps) {
     const updatedImages = currentImages.filter(
       (img) => img._key !== keyToRemove,
     );
-    saveImages(updatedImages);
+    editImages(updatedImages.length > 0 ? updatedImages : null);
   };
 
   const handleMoveImage = (fromIndex: number, toIndex: number) => {
@@ -110,7 +110,7 @@ export function ImageUploader({ id, initialImages = [] }: ImageUploaderProps) {
     const updatedImages = [...currentImages];
     const [movedImage] = updatedImages.splice(fromIndex, 1);
     updatedImages.splice(toIndex, 0, movedImage);
-    saveImages(updatedImages);
+    editImages(updatedImages);
   };
 
   return (
@@ -207,9 +207,9 @@ function ImageThumbnail({
 }: ImageThumbnailProps) {
   // Build URL from asset reference
   const assetRef = image.asset?._ref;
-  let imageUrl: string | null = image.asset?.url || null;
+  let imageUrl: string | null = null;
 
-  if (!imageUrl && assetRef) {
+  if (assetRef) {
     // Parse Sanity asset ID: image-{id}-{width}x{height}-{format}
     const match = assetRef.match(/^image-([a-zA-Z0-9]+)-(\d+x\d+)-(\w+)$/);
     if (match) {
@@ -285,5 +285,25 @@ function ImageThumbnail({
         </Button>
       </div>
     </div>
+  );
+}
+
+function ImageUploaderSkeleton() {
+  return (
+    <div className="space-y-4">
+      <Skeleton className="h-10 w-full" />
+      <div className="grid grid-cols-2 gap-3">
+        <Skeleton className="aspect-square rounded-lg" />
+        <Skeleton className="aspect-square rounded-lg" />
+      </div>
+    </div>
+  );
+}
+
+export function ImageUploader(props: DocumentHandle) {
+  return (
+    <Suspense fallback={<ImageUploaderSkeleton />}>
+      <ImageUploaderContent {...props} />
+    </Suspense>
   );
 }

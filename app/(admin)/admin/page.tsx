@@ -1,18 +1,36 @@
-import Link from "next/link";
-import { Package, ShoppingCart, TrendingUp, Plus } from "lucide-react";
+"use client";
+
+import { useTransition } from "react";
+import { useRouter } from "next/navigation";
+import {
+  useApplyDocumentActions,
+  createDocumentHandle,
+  createDocument,
+} from "@sanity/sdk-react";
+import { Package, ShoppingCart, TrendingUp, Plus, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   StatCard,
+  LowStockAlert,
+  RecentOrders,
   AIInsightsCard,
 } from "@/components/admin";
-import { LowStockAlert } from "@/components/admin/LowStockAlert";
-import { RecentOrders } from "@/components/admin/RecentOrders";
-import { getDashboardStats } from "@/sanity/lib/admin-queries";
 
-export const dynamic = "force-dynamic";
+export default function AdminDashboard() {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const apply = useApplyDocumentActions();
 
-export default async function AdminDashboard() {
-  const stats = await getDashboardStats();
+  const handleCreateProduct = () => {
+    startTransition(async () => {
+      const newDocHandle = createDocumentHandle({
+        documentId: crypto.randomUUID(),
+        documentType: "product",
+      });
+      await apply(createDocument(newDocHandle));
+      router.push(`/admin/inventory/${newDocHandle.documentId}`);
+    });
+  };
 
   return (
     <div className="space-y-6 sm:space-y-8">
@@ -26,12 +44,18 @@ export default async function AdminDashboard() {
             Overview of your store
           </p>
         </div>
-        <Link href="/admin/inventory/new" className="w-full sm:w-auto">
-          <Button className="w-full sm:w-auto">
+        <Button
+          onClick={handleCreateProduct}
+          disabled={isPending}
+          className="w-full sm:w-auto"
+        >
+          {isPending ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
             <Plus className="mr-2 h-4 w-4" />
-            New Product
-          </Button>
-        </Link>
+          )}
+          New Product
+        </Button>
       </div>
 
       {/* AI Insights */}
@@ -42,19 +66,20 @@ export default async function AdminDashboard() {
         <StatCard
           title="Total Products"
           icon={Package}
-          count={stats.totalProducts}
+          documentType="product"
           href="/admin/inventory"
         />
         <StatCard
           title="Total Orders"
           icon={ShoppingCart}
-          count={stats.totalOrders}
+          documentType="order"
           href="/admin/orders"
         />
         <StatCard
           title="Low Stock Items"
           icon={TrendingUp}
-          count={stats.lowStockProducts}
+          documentType="product"
+          filter="stock <= 5"
           href="/admin/inventory"
         />
       </div>

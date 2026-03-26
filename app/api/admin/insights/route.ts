@@ -1,6 +1,7 @@
 import { generateText } from "ai";
 import { google } from "@ai-sdk/google";
 import { client } from "@/sanity/lib/client";
+
 import {
   ORDERS_LAST_7_DAYS_QUERY,
   ORDER_STATUS_DISTRIBUTION_QUERY,
@@ -101,7 +102,7 @@ export async function GET() {
     >();
 
     for (const sale of productSales) {
-      if (!sale.productId) continue;
+      if (!sale || !sale.productId) continue;
       const existing = productSalesMap.get(sale.productId);
       if (existing) {
         existing.totalQuantity += sale.quantity;
@@ -130,6 +131,7 @@ export async function GET() {
 
     const needsRestock = productsInventory
       .filter((p) => {
+        if (!p) return false;
         const salesQty = productSalesById.get(p._id) || 0;
         return p.stock <= 5 && salesQty > 0;
       })
@@ -139,6 +141,7 @@ export async function GET() {
     // Slow moving inventory (in stock but no sales)
     const slowMoving = productsInventory
       .filter((p) => {
+        if (!p) return false;
         const salesQty = productSalesById.get(p._id) || 0;
         return p.stock > 10 && salesQty === 0;
       })
@@ -163,7 +166,7 @@ export async function GET() {
 
     const avgOrderValue =
       recentOrders.length > 0
-        ? recentOrders.reduce((sum, o) => sum + (o.total || 0), 0) /
+        ? recentOrders.reduce((sum, o) => sum + (o?.total || 0), 0) /
           recentOrders.length
         : 0;
 
@@ -212,7 +215,7 @@ export async function GET() {
 
     // Generate AI insights
     const { text } = await generateText({
-      model: google("gemini-2.5-flash"),
+      model: google("gemini-2.0-flash"),
       system: `You are an expert e-commerce analytics assistant. Analyze the provided store data and generate actionable insights for the store admin.
 
 Your response must be valid JSON with this exact structure:
