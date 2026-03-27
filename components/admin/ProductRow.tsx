@@ -121,7 +121,7 @@ function ProductRowContent(handle: DocumentHandle) {
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    window.open(`/products/${data.slug}`, "_blank");
+                    window.open(`/shop/products/${data.slug}`, "_blank");
                   }}
                   className="hidden shrink-0 opacity-0 transition-opacity group-hover:opacity-100 sm:block"
                   aria-label="View product on store"

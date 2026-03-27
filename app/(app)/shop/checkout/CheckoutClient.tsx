@@ -31,7 +31,7 @@ export function CheckoutClient() {
             Add some items to your cart before checking out.
           </p>
           <Button asChild className="mt-8">
-            <Link href="/">Continue Shopping</Link>
+            <Link href="/shop">Continue Shopping</Link>
           </Button>
         </div>
       </div>
@@ -43,7 +43,7 @@ export function CheckoutClient() {
       {/* Header */}
       <div className="mb-8">
         <Link
-          href="/"
+          href="/shop"
           className="inline-flex items-center text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />

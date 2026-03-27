@@ -58,7 +58,7 @@ export default async function OrdersPage() {
           return (
             <Link
               key={order._id}
-              href={`/orders/${order._id}`}
+              href={`/shop/orders/${order._id}`}
               className="group block rounded-xl border border-zinc-200 bg-white transition-all hover:border-zinc-300 hover:shadow-lg dark:border-zinc-800 dark:bg-zinc-950 dark:hover:border-zinc-700"
             >
               <div className="flex gap-5 p-5">

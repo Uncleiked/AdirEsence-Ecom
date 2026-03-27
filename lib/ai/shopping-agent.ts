@@ -121,7 +121,7 @@ The tool returns products with these fields:
 - category, material, color, dimensions
 - stockStatus: "in_stock", "low_stock", or "out_of_stock"
 - stockMessage: Human-readable stock info
-- productUrl: Link to product page (e.g., "/products/oak-table")
+- productUrl: Link to product page (e.g., "/shop/products/oak-table")
 
 ### Format products like this:
 

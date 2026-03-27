@@ -129,13 +129,13 @@ export function SuccessClient({ session }: SuccessClientProps) {
       {/* Actions */}
       <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
         <Button asChild variant="outline">
-          <Link href="/orders">
-            View Your Orders
+          <Link href="/shop/orders">
+            View Order Status
             <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
         </Button>
         <Button asChild>
-          <Link href="/">Continue Shopping</Link>
+          <Link href="/shop">Continue Shopping</Link>
         </Button>
       </div>
     </div>

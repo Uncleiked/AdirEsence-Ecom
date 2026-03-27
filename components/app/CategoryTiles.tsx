@@ -27,7 +27,7 @@ export function CategoryTiles({
       <div className="flex w-max animate-marquee gap-4 hover:[animation-play-state:paused] mx-auto">
         {/* All Products tile */}
         <Link
-          href="/"
+          href="/shop"
           className={`group relative flex-shrink-0 overflow-hidden rounded-xl transition-all duration-300 ${
             !activeCategory
               ? "ring-2 ring-amber-500 ring-offset-2 dark:ring-offset-zinc-900"
@@ -65,7 +65,7 @@ export function CategoryTiles({
           return (
             <Link
               key={key}
-              href={`/?category=${category.slug}`}
+              href={`/shop?category=${category.slug}`}
               className={`group relative flex-shrink-0 overflow-hidden rounded-xl transition-all duration-300 ${
                 isActive
                   ? "ring-2 ring-amber-500 ring-offset-2 dark:ring-offset-zinc-900"

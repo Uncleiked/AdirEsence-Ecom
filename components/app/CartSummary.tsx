@@ -36,7 +36,7 @@ export function CartSummary({ hasStockIssues = false }: CartSummaryProps) {
           </Button>
         ) : (
           <Button asChild className="w-full">
-            <Link href="/checkout" onClick={() => closeCart()}>
+            <Link href="/shop/checkout" onClick={() => closeCart()}>
               Checkout
             </Link>
           </Button>
@@ -44,7 +44,7 @@ export function CartSummary({ hasStockIssues = false }: CartSummaryProps) {
       </div>
       <div className="mt-3 text-center">
         <Link
-          href="/"
+          href="/shop"
           className="text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
         >
           Continue Shopping →

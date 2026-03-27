@@ -103,7 +103,7 @@ export function createGetMyOrdersTool(userId: string | null) {
             (url): url is string => url !== null
           ),
           createdAt: order.createdAt,
-          orderUrl: `/orders/${order._id}`,
+          orderUrl: `/shop/orders/${order._id}`,
         }));
 
         return {

@@ -28,7 +28,7 @@ export function Header() {
           {/* My Orders - Only when signed in */}
           <SignedIn>
             <Button asChild className="md:flex">
-              <Link href="/orders" className="flex items-center gap-2">
+              <Link href="/shop/orders" className="flex items-center gap-2">
                 <Package className="h-5 w-5" />
                 <span className="text-sm font-medium">My Orders</span>
               </Link>
@@ -76,7 +76,7 @@ export function Header() {
                 <UserButton.Link
                   label="My Orders"
                   labelIcon={<Package className="h-4 w-4" />}
-                  href="/orders"
+                  href="/shop/orders"
                 />
               </UserButton.MenuItems>
             </UserButton>

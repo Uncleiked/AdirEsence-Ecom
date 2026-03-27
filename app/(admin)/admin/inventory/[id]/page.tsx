@@ -227,7 +227,7 @@ function ProductStoreLink(handle: DocumentHandle) {
 
   return (
     <Link
-      href={`/products/${slug}`}
+      href={`/shop/products/${slug}`}
       target="_blank"
       className="flex items-center justify-center gap-1 text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
     >

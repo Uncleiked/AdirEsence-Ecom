@@ -40,8 +40,8 @@ export default async function OrderDetailPage({ params }: OrderPageProps) {
       {/* Header */}
       <div className="mb-8">
         <Link
-          href="/orders"
-          className="inline-flex items-center text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+          href="/shop/orders"
+          className="inline-flex items-center text-sm font-medium text-amber-600 hover:text-amber-500 dark:text-amber-400 dark:hover:text-amber-300"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Orders
@@ -95,7 +95,7 @@ export default async function OrderDetailPage({ params }: OrderPageProps) {
                   <div className="flex flex-1 flex-col justify-between">
                     <div>
                       <Link
-                        href={`/products/${item.product?.slug}`}
+                        href={`/shop/products/${item.product?.slug}`}
                         className="font-medium text-zinc-900 hover:text-zinc-600 dark:text-zinc-100 dark:hover:text-zinc-300"
                       >
                         {item.product?.name ?? "Unknown Product"}

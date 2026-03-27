@@ -13,6 +13,145 @@
  */
 
 // Source: schema.json
+export type Feature = {
+  _id: string;
+  _type: "feature";
+  _createdAt: string;
+  _updatedAt: string;
+  _rev: string;
+  title?: string;
+  description?: string;
+  icon?: string;
+  order?: number;
+};
+
+export type Hero = {
+  _id: string;
+  _type: "hero";
+  _createdAt: string;
+  _updatedAt: string;
+  _rev: string;
+  animationSequence?: {
+    _ref: string;
+    _type: "reference";
+    _weak?: boolean;
+    [internalGroqTypeReferenceTo]?: "sequence";
+  };
+  beatA?: {
+    title?: string;
+    subtitle?: string;
+  };
+  beatB?: {
+    title?: string;
+    description?: string;
+  };
+  beatC?: {
+    title?: string;
+    description?: string;
+  };
+  beatD?: {
+    title?: string;
+    subtitle?: string;
+    buttonText?: string;
+  };
+};
+
+export type About = {
+  _id: string;
+  _type: "about";
+  _createdAt: string;
+  _updatedAt: string;
+  _rev: string;
+  title?: string;
+  description?: string;
+  assetType?: "image" | "video";
+  image?: {
+    asset?: {
+      _ref: string;
+      _type: "reference";
+      _weak?: boolean;
+      [internalGroqTypeReferenceTo]?: "sanity.imageAsset";
+    };
+    media?: unknown;
+    hotspot?: SanityImageHotspot;
+    crop?: SanityImageCrop;
+    _type: "image";
+  };
+  video?: {
+    asset?: {
+      _ref: string;
+      _type: "reference";
+      _weak?: boolean;
+      [internalGroqTypeReferenceTo]?: "sanity.fileAsset";
+    };
+    media?: unknown;
+    _type: "file";
+  };
+  videoUrl?: string;
+};
+
+export type SanityImageCrop = {
+  _type: "sanity.imageCrop";
+  top?: number;
+  bottom?: number;
+  left?: number;
+  right?: number;
+};
+
+export type SanityImageHotspot = {
+  _type: "sanity.imageHotspot";
+  x?: number;
+  y?: number;
+  height?: number;
+  width?: number;
+};
+
+export type Sequence = {
+  _id: string;
+  _type: "sequence";
+  _createdAt: string;
+  _updatedAt: string;
+  _rev: string;
+  title?: string;
+  images?: Array<{
+    asset?: {
+      _ref: string;
+      _type: "reference";
+      _weak?: boolean;
+      [internalGroqTypeReferenceTo]?: "sanity.imageAsset";
+    };
+    media?: unknown;
+    hotspot?: SanityImageHotspot;
+    crop?: SanityImageCrop;
+    _type: "image";
+    _key: string;
+  }>;
+};
+
+export type SiteSettings = {
+  _id: string;
+  _type: "siteSettings";
+  _createdAt: string;
+  _updatedAt: string;
+  _rev: string;
+  siteName?: string;
+  headerCtaText?: string;
+  headerCtaLink?: string;
+  socialLinks?: {
+    facebook?: string;
+    instagram?: string;
+    x?: string;
+    pinterest?: string;
+    youtube?: string;
+    tiktok?: string;
+  };
+  footerLinks?: Array<{
+    title?: string;
+    url?: string;
+    _key: string;
+  }>;
+};
+
 export type Order = {
   _id: string;
   _type: "order";
@@ -88,22 +227,6 @@ export type Product = {
   stock?: number;
   featured?: boolean;
   assemblyRequired?: boolean;
-};
-
-export type SanityImageCrop = {
-  _type: "sanity.imageCrop";
-  top?: number;
-  bottom?: number;
-  left?: number;
-  right?: number;
-};
-
-export type SanityImageHotspot = {
-  _type: "sanity.imageHotspot";
-  x?: number;
-  y?: number;
-  height?: number;
-  width?: number;
 };
 
 export type Slug = {
@@ -243,7 +366,7 @@ export type Geopoint = {
   alt?: number;
 };
 
-export type AllSanitySchemaTypes = Order | Product | SanityImageCrop | SanityImageHotspot | Slug | Customer | Category | SanityImagePaletteSwatch | SanityImagePalette | SanityImageDimensions | SanityImageMetadata | SanityFileAsset | SanityAssetSourceData | SanityImageAsset | Geopoint;
+export type AllSanitySchemaTypes = Feature | Hero | About | SanityImageCrop | SanityImageHotspot | Sequence | SiteSettings | Order | Product | Slug | Customer | Category | SanityImagePaletteSwatch | SanityImagePalette | SanityImageDimensions | SanityImageMetadata | SanityFileAsset | SanityAssetSourceData | SanityImageAsset | Geopoint;
 export declare const internalGroqTypeReferenceTo: unique symbol;
 // Source: ./lib/sanity/queries/categories.ts
 // Variable: ALL_CATEGORIES_QUERY
@@ -295,6 +418,69 @@ export type CUSTOMER_BY_STRIPE_ID_QUERYResult = {
   clerkUserId: string | null;
   stripeCustomerId: string | null;
   createdAt: string | null;
+} | null;
+
+// Source: ./lib/sanity/queries/landing.ts
+// Variable: HERO_QUERY
+// Query: *[_type == "hero"][0] {    beatA,    beatB,    beatC,    beatD,    animationSequence->{      title,      "images": images[].asset->url    }  }
+export type HERO_QUERYResult = {
+  beatA: {
+    title?: string;
+    subtitle?: string;
+  } | null;
+  beatB: {
+    title?: string;
+    description?: string;
+  } | null;
+  beatC: {
+    title?: string;
+    description?: string;
+  } | null;
+  beatD: {
+    title?: string;
+    subtitle?: string;
+    buttonText?: string;
+  } | null;
+  animationSequence: {
+    title: string | null;
+    images: Array<string | null> | null;
+  } | null;
+} | null;
+// Variable: ABOUT_QUERY
+// Query: *[_type == "about"][0] {    title,    description,    assetType,    "image": image.asset->url,    "video": video.asset->url,    videoUrl  }
+export type ABOUT_QUERYResult = {
+  title: string | null;
+  description: string | null;
+  assetType: "image" | "video" | null;
+  image: string | null;
+  video: string | null;
+  videoUrl: string | null;
+} | null;
+// Variable: FEATURES_QUERY
+// Query: *[_type == "feature"] | order(order asc) {    title,    description,    icon  }
+export type FEATURES_QUERYResult = Array<{
+  title: string | null;
+  description: string | null;
+  icon: string | null;
+}>;
+// Variable: SITE_SETTINGS_QUERY
+// Query: *[_type == "siteSettings"][0] {    siteName,    headerCtaText,    headerCtaLink,    socialLinks {      facebook,      instagram,      x,      pinterest,      youtube,      tiktok    },    footerLinks[] {      title,      url    }  }
+export type SITE_SETTINGS_QUERYResult = {
+  siteName: string | null;
+  headerCtaText: string | null;
+  headerCtaLink: string | null;
+  socialLinks: {
+    facebook: string | null;
+    instagram: string | null;
+    x: string | null;
+    pinterest: string | null;
+    youtube: string | null;
+    tiktok: string | null;
+  } | null;
+  footerLinks: Array<{
+    title: string | null;
+    url: string | null;
+  }> | null;
 } | null;
 
 // Source: ./lib/sanity/queries/orders.ts
@@ -729,6 +915,10 @@ declare module "@sanity/client" {
     "*[\n  _type == \"category\"\n  && slug.current == $slug\n][0] {\n  _id,\n  title,\n  \"slug\": slug.current,\n  \"image\": image{\n    asset->{\n      _id,\n      url\n    },\n    hotspot\n  }\n}": CATEGORY_BY_SLUG_QUERYResult;
     "*[\n  _type == \"customer\"\n  && email == $email\n][0]{\n  _id,\n  email,\n  name,\n  clerkUserId,\n  stripeCustomerId,\n  createdAt\n}": CUSTOMER_BY_EMAIL_QUERYResult;
     "*[\n  _type == \"customer\"\n  && stripeCustomerId == $stripeCustomerId\n][0]{\n  _id,\n  email,\n  name,\n  clerkUserId,\n  stripeCustomerId,\n  createdAt\n}": CUSTOMER_BY_STRIPE_ID_QUERYResult;
+    "\n  *[_type == \"hero\"][0] {\n    beatA,\n    beatB,\n    beatC,\n    beatD,\n    animationSequence->{\n      title,\n      \"images\": images[].asset->url\n    }\n  }\n": HERO_QUERYResult;
+    "\n  *[_type == \"about\"][0] {\n    title,\n    description,\n    assetType,\n    \"image\": image.asset->url,\n    \"video\": video.asset->url,\n    videoUrl\n  }\n": ABOUT_QUERYResult;
+    "\n  *[_type == \"feature\"] | order(order asc) {\n    title,\n    description,\n    icon\n  }\n": FEATURES_QUERYResult;
+    "\n  *[_type == \"siteSettings\"][0] {\n    siteName,\n    headerCtaText,\n    headerCtaLink,\n    socialLinks {\n      facebook,\n      instagram,\n      x,\n      pinterest,\n      youtube,\n      tiktok\n    },\n    footerLinks[] {\n      title,\n      url\n    }\n  }\n": SITE_SETTINGS_QUERYResult;
     "*[\n  _type == \"order\"\n  && clerkUserId == $clerkUserId\n] | order(createdAt desc) {\n  _id,\n  orderNumber,\n  total,\n  status,\n  createdAt,\n  \"itemCount\": count(items),\n  \"itemNames\": items[].product->name,\n  \"itemImages\": items[].product->images[0].asset->url\n}": ORDERS_BY_USER_QUERYResult;
     "*[\n  _type == \"order\"\n  && _id == $id\n][0] {\n  _id,\n  orderNumber,\n  clerkUserId,\n  email,\n  items[]{\n    _key,\n    quantity,\n    priceAtPurchase,\n    product->{\n      _id,\n      name,\n      \"slug\": slug.current,\n      \"image\": images[0]{\n        asset->{\n          _id,\n          url\n        }\n      }\n    }\n  },\n  total,\n  status,\n  address{\n    name,\n    line1,\n    line2,\n    city,\n    postcode,\n    country\n  },\n  stripePaymentId,\n  createdAt\n}": ORDER_BY_ID_QUERYResult;
     "*[\n  _type == \"order\"\n] | order(createdAt desc) [0...$limit] {\n  _id,\n  orderNumber,\n  email,\n  total,\n  status,\n  createdAt\n}": RECENT_ORDERS_QUERYResult;
