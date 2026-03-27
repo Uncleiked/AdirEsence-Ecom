@@ -43,7 +43,7 @@ export function CartItem({ item, stockInfo }: CartItemProps) {
             src={item.image}
             alt={item.name}
             fill
-            className="object-cover"
+            className="object-contain bg-[#e0e0e1]"
             sizes="80px"
           />
         ) : (

@@ -27,10 +27,10 @@ export function Header() {
         <div className="flex items-center gap-2">
           {/* My Orders - Only when signed in */}
           <SignedIn>
-            <Button asChild className="md:flex">
-              <Link href="/shop/orders" className="flex items-center gap-2">
+            <Button asChild className="flex">
+              <Link href="/shop/orders" className="flex items-center gap-2 px-3 sm:px-4">
                 <Package className="h-5 w-5" />
-                <span className="text-sm font-medium">My Orders</span>
+                <span className="hidden md:inline-block text-sm font-medium">My Orders</span>
               </Link>
             </Button>
           </SignedIn>
@@ -39,7 +39,7 @@ export function Header() {
           {!isChatOpen && (
             <Button
               onClick={openChat}
-              className="gap-1.5 sm:gap-2 px-3 sm:px-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-200/50 transition-all hover:from-amber-600 hover:to-orange-600 hover:shadow-lg hover:shadow-amber-300/50 dark:shadow-amber-900/30 dark:hover:shadow-amber-800/40"
+              className="gap-1.5 sm:gap-2 px-3 sm:px-4 bg-linear-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-200/50 transition-all hover:from-amber-600 hover:to-orange-600 hover:shadow-lg hover:shadow-amber-300/50 dark:shadow-amber-900/30 dark:hover:shadow-amber-800/40"
             >
               <Sparkles className="h-4 w-4" />
               <span className="hidden sm:inline-block text-sm font-medium">Ask AI</span>

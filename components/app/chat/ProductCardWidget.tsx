@@ -30,7 +30,7 @@ export function ProductCardWidget({
           alt={product.name ?? "Product"}
           width={48}
           height={48}
-          className="h-12 w-12 shrink-0 rounded-lg object-cover transition-transform duration-200 group-hover:scale-105"
+          className="h-12 w-12 shrink-0 rounded-lg object-contain transition-transform duration-200 group-hover:scale-105"
         />
       ) : (
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-zinc-100 transition-colors duration-200 group-hover:bg-zinc-200 dark:bg-zinc-700 dark:group-hover:bg-zinc-600">

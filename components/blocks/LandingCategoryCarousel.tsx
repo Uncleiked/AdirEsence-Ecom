@@ -123,7 +123,7 @@ export function LandingCategoryCarousel({ categories }: LandingCategoryCarouselP
                       src={imageUrl}
                       alt={category.title ?? "Category"}
                       fill
-                      className="object-cover object-center transition-transform duration-500 group-hover:scale-110"
+                      className="object-contain object-center transition-transform duration-500 group-hover:scale-110"
                       quality={100}
                       sizes="(max-width: 768px) 100vw, 33vw"
                     />

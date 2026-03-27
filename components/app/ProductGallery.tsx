@@ -36,7 +36,7 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
             src={selectedImage.asset.url}
             alt={productName ?? "Product image"}
             fill
-            className="object-contain"
+            className="object-contain bg-[#e0e0e1]"
             sizes="(max-width: 1024px) 100vw, 50vw"
             priority
           />
@@ -69,7 +69,7 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
                   src={image.asset.url}
                   alt={`${productName} thumbnail ${index + 1}`}
                   fill
-                  className="object-cover"
+                  className="object-contain"
                   sizes="100px"
                 />
               ) : (

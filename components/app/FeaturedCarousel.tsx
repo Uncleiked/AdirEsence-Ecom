@@ -77,11 +77,9 @@ export function FeaturedCarousel({ products }: FeaturedCarouselProps) {
           ))}
         </CarouselContent>
 
-        {/* Navigation arrows - vertically stacked and overlapping on the left-center */}
-        <div className="absolute left-4 top-1/2 flex -translate-y-1/2 flex-col md:left-8 z-20">
-          <CarouselPrevious className="static h-12 w-12 translate-y-0 translate-x-0 border-none bg-zinc-900 text-white hover:bg-zinc-800 disabled:opacity-50" />
-          <CarouselNext className="static -mt-2 h-12 w-12 translate-y-0 translate-x-0 border-none bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-50 z-10" />
-        </div>
+        {/* Navigation arrows */}
+        {/* <CarouselPrevious className="left-4 border-zinc-700 bg-zinc-800/80 text-white hover:bg-zinc-700 hover:text-white sm:left-8" />
+       <CarouselNext className="right-4 border-zinc-700 bg-zinc-800/80 text-white hover:bg-zinc-700 hover:text-white sm:right-8" /> */}
       </Carousel>
 
       {/* Dot indicators */}
@@ -123,7 +121,7 @@ function FeaturedSlide({ product }: FeaturedSlideProps) {
             src={mainImage}
             alt={product.name ?? "Featured product"}
             fill
-            className="object-cover object-center"
+            className="object-contain object-center bg-[#e0e0e1]"
             sizes="(max-width: 768px) 100vw, 60vw"
             quality={100}
             priority

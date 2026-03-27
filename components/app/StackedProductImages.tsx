@@ -92,7 +92,7 @@ export function StackedProductImages({
               src={imageUrl}
               alt=""
               fill
-              className="object-cover"
+              className="object-contain bg-[#e0e0e1]"
               sizes={config.imageSizes}
             />
           </div>

@@ -46,7 +46,7 @@ export function ProductCard({ product }: ProductCardProps) {
               src={displayedImageUrl}
               alt={product.name ?? "Product image"}
               fill
-              className="object-cover object-center transition-transform duration-500 ease-out group-hover:scale-110"
+              className="object-contain object-center transition-transform duration-500 ease-out group-hover:scale-105 bg-[#e0e0e1]"
               sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
               quality={100}
             />
@@ -107,7 +107,7 @@ export function ProductCard({ product }: ProductCardProps) {
                   src={image.asset.url}
                   alt={`${product.name} - view ${index + 1}`}
                   fill
-                  className="object-cover object-center"
+                  className="object-contain object-center"
                   sizes="100px"
                   quality={90}
                 />
