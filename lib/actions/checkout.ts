@@ -196,8 +196,8 @@ export async function createCheckoutSession(
         ],
       },
       metadata,
-      success_url: `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/checkout`,
+      success_url: `${baseUrl}/shop/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/shop/checkout`,
     });
 
     return { success: true, url: session.url ?? undefined };

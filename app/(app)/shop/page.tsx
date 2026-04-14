@@ -99,7 +99,7 @@
 //         <div className="absolute inset-0 z-0 block">
 //            <InteractiveBackground />
 //         </div>
-        
+
 //         <div className="relative z-10">
 //           <ScrollReveal animation="slide-right">
 //             <div className="mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
@@ -231,9 +231,9 @@ export default async function HomePage({ searchParams }: PageProps) {
       <div className="relative border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 overflow-hidden">
         {/* Starlight Background - Dark Mode Only */}
         <div className="absolute inset-0 z-0 block">
-           <InteractiveBackground />
+          <InteractiveBackground />
         </div>
-        
+
         <div className="relative z-10 mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
             Shop {categorySlug ? categorySlug : "All Products"}
