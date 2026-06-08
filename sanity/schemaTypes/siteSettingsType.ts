@@ -51,5 +51,33 @@ export const siteSettingsType = defineType({
         },
       ],
     }),
+    defineField({
+      name: 'shippingLagos',
+      title: 'Shipping Fee (Lagos)',
+      type: 'number',
+      initialValue: 5000,
+      validation: (rule) => rule.required().min(0),
+    }),
+    defineField({
+      name: 'shippingRestOfNigeria',
+      title: 'Shipping Fee (Rest of Nigeria)',
+      type: 'number',
+      initialValue: 10000,
+      validation: (rule) => rule.required().min(0),
+    }),
+    defineField({
+      name: 'shippingAfrica',
+      title: 'Shipping Fee (Other African Countries)',
+      type: 'number',
+      initialValue: 20000,
+      validation: (rule) => rule.required().min(0),
+    }),
+    defineField({
+      name: 'shippingInternational',
+      title: 'Shipping Fee (International)',
+      type: 'number',
+      initialValue: 50000,
+      validation: (rule) => rule.required().min(0),
+    }),
   ],
 })

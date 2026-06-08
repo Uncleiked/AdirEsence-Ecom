@@ -35,8 +35,8 @@ async function run() {
     console.log("Creating order...");
     const res = await writeClient.create(orderData);
     console.log("Success:", res._id);
-  } catch (e) {
-    console.error("Error creating order:", e.message);
+  } catch (e: any) {
+    console.error("Error updating stock:", e.message);
   }
 }
 run();

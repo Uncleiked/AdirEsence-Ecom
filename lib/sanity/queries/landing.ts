@@ -48,7 +48,11 @@ export const SITE_SETTINGS_QUERY = defineQuery(`
     footerLinks[] {
       title,
       url
-    }
+    },
+    shippingLagos,
+    shippingRestOfNigeria,
+    shippingAfrica,
+    shippingInternational
   }
 `);
 

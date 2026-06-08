@@ -39,11 +39,11 @@ export default async function LandingPage() {
         {animationSequence?.images && animationSequence.images.length > 0 ? (
           <div className="relative w-full z-0">
             <SequenceAnimation
-              imageUrls={animationSequence.images}
-              beatA={heroData?.beatA}
-              beatB={heroData?.beatB}
-              beatC={heroData?.beatC}
-              beatD={heroData?.beatD}
+              imageUrls={(animationSequence.images || []) as string[]}
+              beatA={heroData?.beatA as any}
+              beatB={heroData?.beatB as any}
+              beatC={heroData?.beatC as any}
+              beatD={heroData?.beatD as any}
             />
           </div>
         ) : (

@@ -1,10 +1,14 @@
 "use client";
 
+import { useState, useTransition, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, ShoppingBag, AlertTriangle, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, ShoppingBag, AlertTriangle, Loader2, CreditCard, CheckCircle, Truck, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CheckoutButton } from "@/components/app/CheckoutButton";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 import { formatPrice } from "@/lib/utils";
 import {
   useCartItems,
@@ -12,12 +16,177 @@ import {
   useTotalItems,
 } from "@/lib/store/cart-store-provider";
 import { useCartStock } from "@/lib/hooks/useCartStock";
+import { createCheckoutSession } from "@/lib/actions/checkout";
+import {
+  isAfricanCountry,
+  calculateShippingFee,
+  calculateServiceCharge,
+} from "@/lib/constants/payment";
 
-export function CheckoutClient() {
+interface CheckoutClientProps {
+  settings: {
+    shippingLagos?: number | null;
+    shippingRestOfNigeria?: number | null;
+    shippingAfrica?: number | null;
+    shippingInternational?: number | null;
+  } | null;
+}
+
+const COUNTRIES = [
+  { group: "Africa (Paystack)", items: [
+    { code: "NG", name: "Nigeria" },
+    { code: "GH", name: "Ghana" },
+    { code: "KE", name: "Kenya" },
+    { code: "ZA", name: "South Africa" },
+    { code: "EG", name: "Egypt" },
+    { code: "RW", name: "Rwanda" },
+    { code: "SN", name: "Senegal" },
+  ]},
+  { group: "International (Stripe)", items: [
+    { code: "US", name: "United States" },
+    { code: "GB", name: "United Kingdom" },
+    { code: "CA", name: "Canada" },
+    { code: "AU", name: "Australia" },
+    { code: "DE", name: "Germany" },
+    { code: "FR", name: "France" },
+    { code: "ES", name: "Spain" },
+    { code: "IT", name: "Italy" },
+    { code: "NL", name: "Netherlands" },
+  ]}
+];
+
+export function CheckoutClient({ settings }: CheckoutClientProps) {
+  const router = useRouter();
   const items = useCartItems();
-  const totalPrice = useTotalPrice();
+  const subtotal = useTotalPrice();
   const totalItems = useTotalItems();
-  const { stockMap, isLoading, hasStockIssues } = useCartStock(items);
+  const { stockMap, isLoading: isStockLoading, hasStockIssues } = useCartStock(items);
+  const [isPending, startTransition] = useTransition();
+
+  // Form State
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    line1: "",
+    line2: "",
+    city: "",
+    state: "",
+    postcode: "",
+    country: "NG",
+  });
+
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+
+  // Default rates fallback
+  const rates = {
+    shippingLagos: settings?.shippingLagos ?? 5000,
+    shippingRestOfNigeria: settings?.shippingRestOfNigeria ?? 10000,
+    shippingAfrica: settings?.shippingAfrica ?? 20000,
+    shippingInternational: settings?.shippingInternational ?? 50000,
+  };
+
+  // Calculations
+  const [shippingFee, setShippingFee] = useState(0);
+  const [serviceCharge, setServiceCharge] = useState(0);
+  const [total, setTotal] = useState(subtotal);
+  const [provider, setProvider] = useState<"stripe" | "paystack">("paystack");
+
+  // Recalculate shipping & service charges dynamically when address fields change
+  useEffect(() => {
+    if (!formData.country) {
+      setShippingFee(0);
+      setServiceCharge(0);
+      setTotal(subtotal);
+      return;
+    }
+
+    const calculatedShipping = calculateShippingFee(
+      formData.country,
+      formData.state,
+      rates
+    );
+
+    const activeProvider = isAfricanCountry(formData.country) ? "paystack" : "stripe";
+    setProvider(activeProvider);
+
+    const calculatedServiceCharge = calculateServiceCharge(
+      subtotal + calculatedShipping,
+      activeProvider,
+      true // Paystack defaults to local card formula for routing
+    );
+
+    setShippingFee(calculatedShipping);
+    setServiceCharge(calculatedServiceCharge);
+    setTotal(subtotal + calculatedShipping + calculatedServiceCharge);
+  }, [formData.country, formData.state, subtotal, settings]);
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (formErrors[name]) {
+      setFormErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+    if (!formData.name.trim()) errors.name = "Full name is required";
+    if (!formData.email.trim()) {
+      errors.email = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      errors.email = "Email is invalid";
+    }
+    if (!formData.phone.trim()) errors.phone = "Phone number is required";
+    if (!formData.line1.trim()) errors.line1 = "Address is required";
+    if (!formData.city.trim()) errors.city = "City is required";
+    if (!formData.state.trim()) errors.state = "State/Region is required";
+    if (!formData.postcode.trim()) errors.postcode = "Postcode/Zip code is required";
+    if (!formData.country) errors.country = "Country is required";
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleCheckoutSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPaymentError(null);
+
+    if (!validateForm()) {
+      toast.error("Form Validation Failed", {
+        description: "Please fill in all required delivery details.",
+      });
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await createCheckoutSession(items, {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        line1: formData.line1,
+        line2: formData.line2,
+        city: formData.city,
+        state: formData.state,
+        postcode: formData.postcode,
+        country: formData.country,
+      });
+
+      if (result.success && result.url) {
+        // Redirect to gateway checkout url
+        router.push(result.url);
+      } else {
+        const errMsg = result.error ?? "Checkout failed";
+        setPaymentError(errMsg);
+        toast.error("Payment Gateway Error", {
+          description: errMsg,
+        });
+      }
+    });
+  };
 
   if (items.length === 0) {
     return (
@@ -39,167 +208,387 @@ export function CheckoutClient() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
       {/* Header */}
-      <div className="mb-8">
-        <Link
-          href="/shop"
-          className="inline-flex items-center text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Continue Shopping
-        </Link>
-        <h1 className="mt-4 text-3xl font-bold text-zinc-900 dark:text-zinc-100">
-          Checkout
-        </h1>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <Link
+            href="/shop"
+            className="inline-flex items-center text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Shop
+          </Link>
+          <h1 className="mt-4 text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+            Checkout
+          </h1>
+        </div>
+        <div className="hidden sm:flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50/50 px-3 py-1.5 text-xs font-medium text-emerald-800 dark:border-emerald-950/30 dark:bg-emerald-950/20 dark:text-emerald-300">
+          <CheckCircle className="h-4 w-4 text-emerald-600" />
+          Secure checkout verified
+        </div>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-5">
-        {/* Cart Items */}
-        <div className="lg:col-span-3">
-          <div className="rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-            <div className="border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
-              <h2 className="font-semibold text-zinc-900 dark:text-zinc-100">
-                Order Summary ({totalItems} items)
-              </h2>
-            </div>
+      <div className="grid gap-8 lg:grid-cols-12 items-start">
+        {/* Left Column: Form */}
+        <form onSubmit={handleCheckoutSubmit} className="lg:col-span-7 space-y-6">
+          <div className="rounded-2xl border border-zinc-200/80 bg-white p-6 shadow-sm dark:border-zinc-800/80 dark:bg-zinc-950/60 backdrop-blur-sm">
+            <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 mb-6 border-b border-zinc-100 dark:border-zinc-800/60 pb-4">
+              <Truck className="h-5 w-5 text-zinc-500" />
+              Delivery Details
+            </h2>
 
-            {/* Stock Issues Warning */}
-            {hasStockIssues && !isLoading && (
-              <div className="mx-6 mt-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200">
-                <AlertTriangle className="h-5 w-5 shrink-0" />
-                <span>
-                  Some items have stock issues. Please update your cart before
-                  proceeding.
-                </span>
+            <div className="space-y-4">
+              {/* Name & Email */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="name" className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                    Full Name <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    type="text"
+                    placeholder="John Doe"
+                    autoComplete="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    className={`rounded-lg ${formErrors.name ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                  />
+                  {formErrors.name && (
+                    <p className="text-xs text-red-500 font-medium">{formErrors.name}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                    Email Address <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder="john@example.com"
+                    autoComplete="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    className={`rounded-lg ${formErrors.email ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                  />
+                  {formErrors.email && (
+                    <p className="text-xs text-red-500 font-medium">{formErrors.email}</p>
+                  )}
+                </div>
               </div>
-            )}
 
-            {/* Loading State */}
-            {isLoading && (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
-                <span className="ml-2 text-sm text-zinc-500">
-                  Verifying stock...
-                </span>
+              {/* Phone */}
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                  Phone Number <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  placeholder="+234 80 1234 5678"
+                  autoComplete="tel"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  className={`rounded-lg ${formErrors.phone ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                />
+                {formErrors.phone && (
+                  <p className="text-xs text-red-500 font-medium">{formErrors.phone}</p>
+                )}
               </div>
-            )}
 
-            {/* Items List */}
-            <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
-              {items.map((item) => {
-                const stockInfo = stockMap.get(item.productId);
-                const hasIssue =
-                  stockInfo?.isOutOfStock || stockInfo?.exceedsStock;
+              {/* Address Lines */}
+              <div className="space-y-2">
+                <Label htmlFor="line1" className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                  Street Address <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="line1"
+                  name="line1"
+                  type="text"
+                  placeholder="Plot 12, Victoria Island"
+                  autoComplete="address-line1"
+                  value={formData.line1}
+                  onChange={handleInputChange}
+                  className={`rounded-lg ${formErrors.line1 ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                />
+                {formErrors.line1 && (
+                  <p className="text-xs text-red-500 font-medium">{formErrors.line1}</p>
+                )}
+              </div>
 
-                return (
-                  <div
-                    key={item.productId}
-                    className={`flex gap-4 px-6 py-4 ${
-                      hasIssue ? "bg-red-50 dark:bg-red-950/20" : ""
-                    }`}
+              <div className="space-y-2">
+                <Label htmlFor="line2" className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                  Apartment, Suite, Unit, etc. <span className="text-zinc-400">(Optional)</span>
+                </Label>
+                <Input
+                  id="line2"
+                  name="line2"
+                  type="text"
+                  placeholder="Apartment 4B"
+                  autoComplete="address-line2"
+                  value={formData.line2}
+                  onChange={handleInputChange}
+                  className="rounded-lg"
+                />
+              </div>
+
+              {/* Country, State, City, Postcode */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="country" className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                    Country <span className="text-red-500">*</span>
+                  </Label>
+                  <select
+                    id="country"
+                    name="country"
+                    value={formData.country}
+                    onChange={handleInputChange}
+                    autoComplete="country"
+                    className="flex h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 dark:border-zinc-800 dark:bg-zinc-950 dark:ring-offset-zinc-950 dark:focus-visible:ring-zinc-300"
                   >
-                    {/* Image */}
-                    <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-md bg-zinc-100 dark:bg-zinc-800">
-                      {item.image ? (
-                        <Image
-                          src={item.image}
-                          alt={item.name}
-                          fill
-                          className="object-cover"
-                          sizes="80px"
-                        />
-                      ) : (
-                        <div className="flex h-full items-center justify-center text-xs text-zinc-400">
-                          No image
-                        </div>
-                      )}
-                    </div>
+                    {COUNTRIES.map((group) => (
+                      <optgroup key={group.group} label={group.group}>
+                        {group.items.map((item) => (
+                          <option key={item.code} value={item.code}>
+                            {item.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                  {formErrors.country && (
+                    <p className="text-xs text-red-500 font-medium">{formErrors.country}</p>
+                  )}
+                </div>
 
-                    {/* Details */}
-                    <div className="flex flex-1 flex-col justify-between">
-                      <div>
-                        <h3 className="font-medium text-zinc-900 dark:text-zinc-100">
-                          {item.name}
-                        </h3>
-                        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                          Qty: {item.quantity}
-                        </p>
-                        {stockInfo?.isOutOfStock && (
-                          <p className="mt-1 text-sm font-medium text-red-600">
-                            Out of stock
-                          </p>
-                        )}
-                        {stockInfo?.exceedsStock && !stockInfo.isOutOfStock && (
-                          <p className="mt-1 text-sm font-medium text-amber-600">
-                            Only {stockInfo.currentStock} available
-                          </p>
-                        )}
-                      </div>
-                    </div>
+                <div className="space-y-2">
+                  <Label htmlFor="state" className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                    State / Region <span className="text-red-500">*</span>
+                  </Label>
+                  {formData.country === "NG" ? (
+                    <select
+                      id="state"
+                      name="state"
+                      value={formData.state}
+                      onChange={handleInputChange}
+                      autoComplete="address-level1"
+                      className="flex h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 dark:border-zinc-800 dark:bg-zinc-950 dark:ring-offset-zinc-950 dark:focus-visible:ring-zinc-300"
+                    >
+                      <option value="">Select State</option>
+                      <option value="Lagos">Lagos State (₦5,000 Delivery)</option>
+                      <option value="Abuja">Abuja (₦10,000 Delivery)</option>
+                      <option value="Rivers">Rivers (₦10,000 Delivery)</option>
+                      <option value="Oyo">Oyo (₦10,000 Delivery)</option>
+                      <option value="Kano">Kano (₦10,000 Delivery)</option>
+                      <option value="Other">Other Nigeria State (₦10,000 Delivery)</option>
+                    </select>
+                  ) : (
+                    <Input
+                      id="state"
+                      name="state"
+                      type="text"
+                      placeholder="e.g. California / Greater London"
+                      autoComplete="address-level1"
+                      value={formData.state}
+                      onChange={handleInputChange}
+                      className={`rounded-lg ${formErrors.state ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                    />
+                  )}
+                  {formErrors.state && (
+                    <p className="text-xs text-red-500 font-medium">{formErrors.state}</p>
+                  )}
+                </div>
+              </div>
 
-                    {/* Price */}
-                    <div className="text-right">
-                      <p className="font-medium text-zinc-900 dark:text-zinc-100">
-                        {formatPrice(item.price * item.quantity)}
-                      </p>
-                      {item.quantity > 1 && (
-                        <p className="text-sm text-zinc-500">
-                          {formatPrice(item.price)} each
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="city" className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                    City <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="city"
+                    name="city"
+                    type="text"
+                    placeholder="Ikeja"
+                    autoComplete="address-level2"
+                    value={formData.city}
+                    onChange={handleInputChange}
+                    className={`rounded-lg ${formErrors.city ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                  />
+                  {formErrors.city && (
+                    <p className="text-xs text-red-500 font-medium">{formErrors.city}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="postcode" className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                    Postcode / ZIP <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="postcode"
+                    name="postcode"
+                    type="text"
+                    placeholder="100001"
+                    autoComplete="postal-code"
+                    value={formData.postcode}
+                    onChange={handleInputChange}
+                    className={`rounded-lg ${formErrors.postcode ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                  />
+                  {formErrors.postcode && (
+                    <p className="text-xs text-red-500 font-medium">{formErrors.postcode}</p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        </form>
 
-        {/* Order Total & Checkout */}
-        <div className="lg:col-span-2">
-          <div className="sticky top-24 rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
-            <h2 className="font-semibold text-zinc-900 dark:text-zinc-100">
+        {/* Right Column: Order & Pricing Summary */}
+        <div className="lg:col-span-5 space-y-6">
+          <div className="sticky top-24 rounded-2xl border border-zinc-200/80 bg-white p-6 shadow-sm dark:border-zinc-800/80 dark:bg-zinc-950/60 backdrop-blur-sm">
+            <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 mb-4 pb-2 border-b border-zinc-100 dark:border-zinc-800/60">
               Payment Summary
             </h2>
 
-            <div className="mt-6 space-y-4">
-              <div className="flex justify-between text-sm">
-                <span className="text-zinc-500 dark:text-zinc-400">
-                  Subtotal
+            {/* Cart Items List */}
+            <div className="max-h-48 overflow-y-auto mb-4 divide-y divide-zinc-100 dark:divide-zinc-800/60 pr-1">
+              {items.map((item) => (
+                <div key={item.productId} className="py-3 flex items-center gap-3">
+                  <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800">
+                    {item.image ? (
+                      <Image
+                        src={item.image}
+                        alt={item.name}
+                        fill
+                        className="object-cover"
+                        sizes="40px"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-[8px] text-zinc-400">
+                        No image
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 truncate">{item.name}</p>
+                    <p className="text-[10px] text-zinc-400">Qty: {item.quantity} • {formatPrice(item.price)} each</p>
+                  </div>
+                  <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">{formatPrice(item.price * item.quantity)}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Billing breakdown */}
+            <div className="space-y-3 pt-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-zinc-500 dark:text-zinc-400">Subtotal</span>
+                <span className="font-semibold text-zinc-900 dark:text-zinc-100">{formatPrice(subtotal)}</span>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
+                  Transportation Fee
+                  <span className="group relative cursor-pointer text-zinc-400 hover:text-zinc-600">
+                    <Info className="h-3.5 w-3.5" />
+                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block w-48 rounded bg-zinc-900 p-2 text-[10px] font-normal leading-normal text-white shadow dark:bg-zinc-800">
+                      Lagos: ₦5k • Other NG: ₦10k • Africa: ₦20k • Intl: ₦50k
+                    </span>
+                  </span>
                 </span>
-                <span className="text-zinc-900 dark:text-zinc-100">
-                  {formatPrice(totalPrice)}
+                <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                  {shippingFee > 0 ? formatPrice(shippingFee) : <span className="text-xs text-amber-600">Calculated</span>}
                 </span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-zinc-500 dark:text-zinc-400">
-                  Shipping
+
+              <div className="flex justify-between items-center">
+                <span className="text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
+                  Service Charge
+                  <span className="group relative cursor-pointer text-zinc-400 hover:text-zinc-600">
+                    <Info className="h-3.5 w-3.5" />
+                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block w-48 rounded bg-zinc-900 p-2 text-[10px] font-normal leading-normal text-white shadow dark:bg-zinc-800">
+                      Payment processor fee (Stripe 2.9% + ₦100, Paystack 1.5% + ₦100) added to cover transaction costs.
+                    </span>
+                  </span>
                 </span>
-                <span className="text-zinc-900 dark:text-zinc-100">
-                  Calculated at checkout
+                <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                  {serviceCharge > 0 ? formatPrice(serviceCharge) : <span className="text-xs text-amber-600">Calculated</span>}
                 </span>
               </div>
-              <div className="border-t border-zinc-200 pt-4 dark:border-zinc-800">
-                <div className="flex justify-between text-base font-semibold">
-                  <span className="text-zinc-900 dark:text-zinc-100">
-                    Total
+
+              {/* Gateway routing badge */}
+              <div className="pt-2">
+                <div className="flex items-center justify-between rounded-lg border border-zinc-100 bg-zinc-50/50 p-2.5 dark:border-zinc-800/40 dark:bg-zinc-900/30">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] uppercase font-bold text-zinc-400">Gateway Route</span>
+                    <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                      {provider === "paystack" ? "Paystack (African countries)" : "Stripe (International)"}
+                    </span>
+                  </div>
+                  <span className={`inline-flex items-center rounded px-2 py-0.5 text-[10px] font-bold uppercase ${
+                    provider === "paystack" 
+                      ? "bg-sky-50 text-sky-700 border border-sky-100 dark:bg-sky-950/20 dark:text-sky-300 dark:border-sky-900/30" 
+                      : "bg-indigo-50 text-indigo-700 border border-indigo-100 dark:bg-indigo-950/20 dark:text-indigo-300 dark:border-indigo-900/30"
+                  }`}>
+                    {provider}
                   </span>
-                  <span className="text-zinc-900 dark:text-zinc-100">
-                    {formatPrice(totalPrice)}
-                  </span>
+                </div>
+              </div>
+
+              <div className="border-t border-zinc-200/80 dark:border-zinc-800/80 pt-4">
+                <div className="flex justify-between text-base font-bold">
+                  <span className="text-zinc-900 dark:text-zinc-100">Total</span>
+                  <span className="text-zinc-900 dark:text-zinc-100 text-lg">{formatPrice(total)}</span>
                 </div>
               </div>
             </div>
 
+            {/* Submit checkout */}
             <div className="mt-6">
-              <CheckoutButton disabled={hasStockIssues || isLoading} />
+              <Button
+                onClick={handleCheckoutSubmit}
+                disabled={hasStockIssues || isStockLoading || isPending || items.length === 0}
+                size="lg"
+                className="w-full font-bold shadow-md tracking-wide active:scale-[0.98] transition-transform duration-100"
+              >
+                {isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Redirecting to payment...
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="mr-2 h-5 w-5" />
+                    Pay {formatPrice(total)} with {provider === "paystack" ? "Paystack" : "Stripe"}
+                  </>
+                )}
+              </Button>
             </div>
 
-            <p className="mt-4 text-center text-xs text-zinc-500 dark:text-zinc-400">
-              You&apos;ll be redirected to Stripe&apos;s secure checkout
+            {paymentError && (
+              <p className="text-xs text-red-600 dark:text-red-400 mt-2 font-medium text-center bg-red-50/50 p-2 rounded-lg border border-red-100 dark:bg-red-950/15 dark:border-red-950/30">
+                {paymentError}
+              </p>
+            )}
+
+            <p className="mt-4 text-center text-[10px] text-zinc-400">
+              By clicking, you will be redirected to {provider === "paystack" ? "Paystack's" : "Stripe's"} secure hosted checkout page.
             </p>
           </div>
+
+          {/* Stock Issues warning inside summary */}
+          {hasStockIssues && !isStockLoading && (
+            <div className="flex items-start gap-2.5 rounded-2xl border border-amber-100 bg-amber-50/50 p-4 text-xs text-amber-800 dark:border-amber-950/30 dark:bg-amber-950/20 dark:text-amber-300">
+              <AlertTriangle className="h-4.5 w-4.5 shrink-0 text-amber-600 mt-0.5" />
+              <div>
+                <span className="font-bold">Stock verification warning: </span>
+                Some items have stock conflicts. Please update cart quantities before checking out.
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

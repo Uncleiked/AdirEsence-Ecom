@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { client, writeClient } from "@/sanity/lib/client";
-import { ORDER_BY_STRIPE_PAYMENT_ID_QUERY } from "@/lib/sanity/queries/orders";
+import { ORDER_BY_STRIPE_PAYMENT_ID_QUERY, ORDER_BY_PAYMENT_ID_QUERY } from "@/lib/sanity/queries/orders";
 import type { Order } from "@/sanity.types";
 
 if (!process.env.STRIPE_SECRET_KEY) {
@@ -81,6 +81,14 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       sanityCustomerId,
       productIds: productIdsString,
       quantities: quantitiesString,
+      shippingFee: shippingFeeStr,
+      serviceCharge: serviceChargeStr,
+      shippingName,
+      shippingLine1,
+      shippingLine2,
+      shippingCity,
+      shippingPostcode,
+      shippingCountry,
     } = session.metadata ?? {};
 
     if (!clerkUserId || !productIdsString || !quantitiesString) {
@@ -110,18 +118,26 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     // Generate order number
     const orderNumber = `ORD-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
-    // Extract shipping address
-    const shippingAddress = session.customer_details?.address;
-    const address = shippingAddress
+    // Extract shipping address (prefer metadata address collected in custom checkout form)
+    const address = shippingName
       ? {
-          name: session.customer_details?.name ?? "",
-          line1: shippingAddress.line1 ?? "",
-          line2: shippingAddress.line2 ?? "",
-          city: shippingAddress.city ?? "",
-          postcode: shippingAddress.postal_code ?? "",
-          country: shippingAddress.country ?? "",
+          name: shippingName,
+          line1: shippingLine1 ?? "",
+          line2: shippingLine2 ?? "",
+          city: shippingCity ?? "",
+          postcode: shippingPostcode ?? "",
+          country: shippingCountry ?? "",
         }
-      : undefined;
+      : (session.customer_details?.address
+          ? {
+              name: session.customer_details?.name ?? "",
+              line1: session.customer_details?.address?.line1 ?? "",
+              line2: session.customer_details?.address?.line2 ?? "",
+              city: session.customer_details?.address?.city ?? "",
+              postcode: session.customer_details?.address?.postal_code ?? "",
+              country: session.customer_details?.address?.country ?? "",
+            }
+          : undefined);
 
     // Create order in Sanity with customer reference
     const orderData: Omit<Order, "_id" | "_createdAt" | "_updatedAt" | "_rev"> = {
@@ -135,10 +151,14 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       }),
       clerkUserId,
       email: userEmail ?? session.customer_details?.email ?? "",
-      items: orderItems,
+      items: orderItems as any,
       total: (session.amount_total ?? 0) / 100,
       status: "paid",
       stripePaymentId,
+      paymentId: stripePaymentId,
+      paymentProvider: "stripe",
+      shippingFee: shippingFeeStr ? Number(shippingFeeStr) : 0,
+      serviceCharge: serviceChargeStr ? Number(serviceChargeStr) : 0,
       address,
       createdAt: new Date().toISOString(),
     };

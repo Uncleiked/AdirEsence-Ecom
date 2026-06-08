@@ -9,6 +9,7 @@ export const customerType = defineType({
   groups: [
     { name: "details", title: "Customer Details", default: true },
     { name: "stripe", title: "Stripe" },
+    { name: "paystack", title: "Paystack" },
   ],
   fields: [
     defineField({
@@ -35,7 +36,13 @@ export const customerType = defineType({
       group: "stripe",
       readOnly: true,
       description: "Stripe customer ID for payments",
-      validation: (rule) => rule.required().error("Stripe customer ID is required"),
+    }),
+    defineField({
+      name: "paystackCustomerCode",
+      type: "string",
+      group: "paystack",
+      readOnly: true,
+      description: "Paystack customer code for payments",
     }),
     defineField({
       name: "createdAt",

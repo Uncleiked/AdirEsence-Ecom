@@ -150,6 +150,10 @@ export type SiteSettings = {
     url?: string;
     _key: string;
   }>;
+  shippingLagos?: number;
+  shippingRestOfNigeria?: number;
+  shippingAfrica?: number;
+  shippingInternational?: number;
 };
 
 export type Order = {
@@ -189,6 +193,10 @@ export type Order = {
     country?: string;
   };
   stripePaymentId?: string;
+  paymentId?: string;
+  paymentProvider?: string;
+  shippingFee?: number;
+  serviceCharge?: number;
   createdAt?: string;
 };
 
@@ -245,6 +253,7 @@ export type Customer = {
   name?: string;
   clerkUserId?: string;
   stripeCustomerId?: string;
+  paystackCustomerCode?: string;
   createdAt?: string;
 };
 
@@ -400,29 +409,42 @@ export type CATEGORY_BY_SLUG_QUERYResult = {
 
 // Source: ./lib/sanity/queries/customers.ts
 // Variable: CUSTOMER_BY_EMAIL_QUERY
-// Query: *[  _type == "customer"  && email == $email][0]{  _id,  email,  name,  clerkUserId,  stripeCustomerId,  createdAt}
+// Query: *[  _type == "customer"  && email == $email][0]{  _id,  email,  name,  clerkUserId,  stripeCustomerId,  paystackCustomerCode,  createdAt}
 export type CUSTOMER_BY_EMAIL_QUERYResult = {
   _id: string;
   email: string | null;
   name: string | null;
   clerkUserId: string | null;
   stripeCustomerId: string | null;
+  paystackCustomerCode: string | null;
   createdAt: string | null;
 } | null;
 // Variable: CUSTOMER_BY_STRIPE_ID_QUERY
-// Query: *[  _type == "customer"  && stripeCustomerId == $stripeCustomerId][0]{  _id,  email,  name,  clerkUserId,  stripeCustomerId,  createdAt}
+// Query: *[  _type == "customer"  && stripeCustomerId == $stripeCustomerId][0]{  _id,  email,  name,  clerkUserId,  stripeCustomerId,  paystackCustomerCode,  createdAt}
 export type CUSTOMER_BY_STRIPE_ID_QUERYResult = {
   _id: string;
   email: string | null;
   name: string | null;
   clerkUserId: string | null;
   stripeCustomerId: string | null;
+  paystackCustomerCode: string | null;
+  createdAt: string | null;
+} | null;
+// Variable: CUSTOMER_BY_PAYSTACK_CODE_QUERY
+// Query: *[  _type == "customer"  && paystackCustomerCode == $paystackCustomerCode][0]{  _id,  email,  name,  clerkUserId,  stripeCustomerId,  paystackCustomerCode,  createdAt}
+export type CUSTOMER_BY_PAYSTACK_CODE_QUERYResult = {
+  _id: string;
+  email: string | null;
+  name: string | null;
+  clerkUserId: string | null;
+  stripeCustomerId: string | null;
+  paystackCustomerCode: string | null;
   createdAt: string | null;
 } | null;
 
 // Source: ./lib/sanity/queries/landing.ts
 // Variable: HERO_QUERY
-// Query: *[_type == "hero"][0] {    beatA,    beatB,    beatC,    beatD,    animationSequence->{      title,      "images": images[].asset->url    }  }
+// Query: *[_type == "hero"] | order(_updatedAt desc)[0] {    beatA,    beatB,    beatC,    beatD,    animationSequence->{      title,      "images": images[].asset->url    }  }
 export type HERO_QUERYResult = {
   beatA: {
     title?: string;
@@ -447,7 +469,7 @@ export type HERO_QUERYResult = {
   } | null;
 } | null;
 // Variable: ABOUT_QUERY
-// Query: *[_type == "about"][0] {    title,    description,    assetType,    "image": image.asset->url,    "video": video.asset->url,    videoUrl  }
+// Query: *[_type == "about"] | order(_updatedAt desc)[0] {    title,    description,    assetType,    "image": image.asset->url,    "video": video.asset->url,    videoUrl  }
 export type ABOUT_QUERYResult = {
   title: string | null;
   description: string | null;
@@ -464,7 +486,7 @@ export type FEATURES_QUERYResult = Array<{
   icon: string | null;
 }>;
 // Variable: SITE_SETTINGS_QUERY
-// Query: *[_type == "siteSettings"][0] {    siteName,    headerCtaText,    headerCtaLink,    socialLinks {      facebook,      instagram,      x,      pinterest,      youtube,      tiktok    },    footerLinks[] {      title,      url    }  }
+// Query: *[_type == "siteSettings"] | order(_updatedAt desc)[0] {    siteName,    headerCtaText,    headerCtaLink,    socialLinks {      facebook,      instagram,      x,      pinterest,      youtube,      tiktok    },    footerLinks[] {      title,      url    },    shippingLagos,    shippingRestOfNigeria,    shippingAfrica,    shippingInternational  }
 export type SITE_SETTINGS_QUERYResult = {
   siteName: string | null;
   headerCtaText: string | null;
@@ -481,6 +503,10 @@ export type SITE_SETTINGS_QUERYResult = {
     title: string | null;
     url: string | null;
   }> | null;
+  shippingLagos: number | null;
+  shippingRestOfNigeria: number | null;
+  shippingAfrica: number | null;
+  shippingInternational: number | null;
 } | null;
 
 // Source: ./lib/sanity/queries/orders.ts
@@ -497,7 +523,7 @@ export type ORDERS_BY_USER_QUERYResult = Array<{
   itemImages: Array<string | null> | null;
 }>;
 // Variable: ORDER_BY_ID_QUERY
-// Query: *[  _type == "order"  && _id == $id][0] {  _id,  orderNumber,  clerkUserId,  email,  items[]{    _key,    quantity,    priceAtPurchase,    product->{      _id,      name,      "slug": slug.current,      "image": images[0]{        asset->{          _id,          url        }      }    }  },  total,  status,  address{    name,    line1,    line2,    city,    postcode,    country  },  stripePaymentId,  createdAt}
+// Query: *[  _type == "order"  && _id == $id][0] {  _id,  orderNumber,  clerkUserId,  email,  items[]{    _key,    quantity,    priceAtPurchase,    product->{      _id,      name,      "slug": slug.current,      "image": images[0]{        asset->{          _id,          url        }      }    }  },  total,  status,  address{    name,    line1,    line2,    city,    postcode,    country  },  stripePaymentId,  paymentId,  paymentProvider,  shippingFee,  serviceCharge,  createdAt}
 export type ORDER_BY_ID_QUERYResult = {
   _id: string;
   orderNumber: string | null;
@@ -530,6 +556,10 @@ export type ORDER_BY_ID_QUERYResult = {
     country: string | null;
   } | null;
   stripePaymentId: string | null;
+  paymentId: string | null;
+  paymentProvider: string | null;
+  shippingFee: number | null;
+  serviceCharge: number | null;
   createdAt: string | null;
 } | null;
 // Variable: RECENT_ORDERS_QUERY
@@ -545,6 +575,11 @@ export type RECENT_ORDERS_QUERYResult = Array<{
 // Variable: ORDER_BY_STRIPE_PAYMENT_ID_QUERY
 // Query: *[  _type == "order"  && stripePaymentId == $stripePaymentId][0]{ _id }
 export type ORDER_BY_STRIPE_PAYMENT_ID_QUERYResult = {
+  _id: string;
+} | null;
+// Variable: ORDER_BY_PAYMENT_ID_QUERY
+// Query: *[  _type == "order"  && (paymentId == $paymentId || stripePaymentId == $paymentId)][0]{ _id }
+export type ORDER_BY_PAYMENT_ID_QUERYResult = {
   _id: string;
 } | null;
 
@@ -913,16 +948,18 @@ declare module "@sanity/client" {
   interface SanityQueries {
     "*[\n  _type == \"category\"\n] | order(title asc) {\n  _id,\n  title,\n  \"slug\": slug.current,\n  \"image\": image{\n    asset->{\n      _id,\n      url\n    },\n    hotspot\n  }\n}": ALL_CATEGORIES_QUERYResult;
     "*[\n  _type == \"category\"\n  && slug.current == $slug\n][0] {\n  _id,\n  title,\n  \"slug\": slug.current,\n  \"image\": image{\n    asset->{\n      _id,\n      url\n    },\n    hotspot\n  }\n}": CATEGORY_BY_SLUG_QUERYResult;
-    "*[\n  _type == \"customer\"\n  && email == $email\n][0]{\n  _id,\n  email,\n  name,\n  clerkUserId,\n  stripeCustomerId,\n  createdAt\n}": CUSTOMER_BY_EMAIL_QUERYResult;
-    "*[\n  _type == \"customer\"\n  && stripeCustomerId == $stripeCustomerId\n][0]{\n  _id,\n  email,\n  name,\n  clerkUserId,\n  stripeCustomerId,\n  createdAt\n}": CUSTOMER_BY_STRIPE_ID_QUERYResult;
-    "\n  *[_type == \"hero\"][0] {\n    beatA,\n    beatB,\n    beatC,\n    beatD,\n    animationSequence->{\n      title,\n      \"images\": images[].asset->url\n    }\n  }\n": HERO_QUERYResult;
-    "\n  *[_type == \"about\"][0] {\n    title,\n    description,\n    assetType,\n    \"image\": image.asset->url,\n    \"video\": video.asset->url,\n    videoUrl\n  }\n": ABOUT_QUERYResult;
+    "*[\n  _type == \"customer\"\n  && email == $email\n][0]{\n  _id,\n  email,\n  name,\n  clerkUserId,\n  stripeCustomerId,\n  paystackCustomerCode,\n  createdAt\n}": CUSTOMER_BY_EMAIL_QUERYResult;
+    "*[\n  _type == \"customer\"\n  && stripeCustomerId == $stripeCustomerId\n][0]{\n  _id,\n  email,\n  name,\n  clerkUserId,\n  stripeCustomerId,\n  paystackCustomerCode,\n  createdAt\n}": CUSTOMER_BY_STRIPE_ID_QUERYResult;
+    "*[\n  _type == \"customer\"\n  && paystackCustomerCode == $paystackCustomerCode\n][0]{\n  _id,\n  email,\n  name,\n  clerkUserId,\n  stripeCustomerId,\n  paystackCustomerCode,\n  createdAt\n}": CUSTOMER_BY_PAYSTACK_CODE_QUERYResult;
+    "\n  *[_type == \"hero\"] | order(_updatedAt desc)[0] {\n    beatA,\n    beatB,\n    beatC,\n    beatD,\n    animationSequence->{\n      title,\n      \"images\": images[].asset->url\n    }\n  }\n": HERO_QUERYResult;
+    "\n  *[_type == \"about\"] | order(_updatedAt desc)[0] {\n    title,\n    description,\n    assetType,\n    \"image\": image.asset->url,\n    \"video\": video.asset->url,\n    videoUrl\n  }\n": ABOUT_QUERYResult;
     "\n  *[_type == \"feature\"] | order(order asc) {\n    title,\n    description,\n    icon\n  }\n": FEATURES_QUERYResult;
-    "\n  *[_type == \"siteSettings\"][0] {\n    siteName,\n    headerCtaText,\n    headerCtaLink,\n    socialLinks {\n      facebook,\n      instagram,\n      x,\n      pinterest,\n      youtube,\n      tiktok\n    },\n    footerLinks[] {\n      title,\n      url\n    }\n  }\n": SITE_SETTINGS_QUERYResult;
+    "\n  *[_type == \"siteSettings\"] | order(_updatedAt desc)[0] {\n    siteName,\n    headerCtaText,\n    headerCtaLink,\n    socialLinks {\n      facebook,\n      instagram,\n      x,\n      pinterest,\n      youtube,\n      tiktok\n    },\n    footerLinks[] {\n      title,\n      url\n    },\n    shippingLagos,\n    shippingRestOfNigeria,\n    shippingAfrica,\n    shippingInternational\n  }\n": SITE_SETTINGS_QUERYResult;
     "*[\n  _type == \"order\"\n  && clerkUserId == $clerkUserId\n] | order(createdAt desc) {\n  _id,\n  orderNumber,\n  total,\n  status,\n  createdAt,\n  \"itemCount\": count(items),\n  \"itemNames\": items[].product->name,\n  \"itemImages\": items[].product->images[0].asset->url\n}": ORDERS_BY_USER_QUERYResult;
-    "*[\n  _type == \"order\"\n  && _id == $id\n][0] {\n  _id,\n  orderNumber,\n  clerkUserId,\n  email,\n  items[]{\n    _key,\n    quantity,\n    priceAtPurchase,\n    product->{\n      _id,\n      name,\n      \"slug\": slug.current,\n      \"image\": images[0]{\n        asset->{\n          _id,\n          url\n        }\n      }\n    }\n  },\n  total,\n  status,\n  address{\n    name,\n    line1,\n    line2,\n    city,\n    postcode,\n    country\n  },\n  stripePaymentId,\n  createdAt\n}": ORDER_BY_ID_QUERYResult;
+    "*[\n  _type == \"order\"\n  && _id == $id\n][0] {\n  _id,\n  orderNumber,\n  clerkUserId,\n  email,\n  items[]{\n    _key,\n    quantity,\n    priceAtPurchase,\n    product->{\n      _id,\n      name,\n      \"slug\": slug.current,\n      \"image\": images[0]{\n        asset->{\n          _id,\n          url\n        }\n      }\n    }\n  },\n  total,\n  status,\n  address{\n    name,\n    line1,\n    line2,\n    city,\n    postcode,\n    country\n  },\n  stripePaymentId,\n  paymentId,\n  paymentProvider,\n  shippingFee,\n  serviceCharge,\n  createdAt\n}": ORDER_BY_ID_QUERYResult;
     "*[\n  _type == \"order\"\n] | order(createdAt desc) [0...$limit] {\n  _id,\n  orderNumber,\n  email,\n  total,\n  status,\n  createdAt\n}": RECENT_ORDERS_QUERYResult;
     "*[\n  _type == \"order\"\n  && stripePaymentId == $stripePaymentId\n][0]{ _id }": ORDER_BY_STRIPE_PAYMENT_ID_QUERYResult;
+    "*[\n  _type == \"order\"\n  && (paymentId == $paymentId || stripePaymentId == $paymentId)\n][0]{ _id }": ORDER_BY_PAYMENT_ID_QUERYResult;
     "*[\n  _type == \"product\"\n] | order(name asc) {\n  _id,\n  name,\n  \"slug\": slug.current,\n  description,\n  price,\n  \"images\": images[]{\n    _key,\n    asset->{\n      _id,\n      url\n    },\n    hotspot\n  },\n  category->{\n    _id,\n    title,\n    \"slug\": slug.current\n  },\n  material,\n  color,\n  dimensions,\n  stock,\n  featured,\n  assemblyRequired\n}": ALL_PRODUCTS_QUERYResult;
     "*[\n  _type == \"product\"\n  && featured == true\n  && stock > 0\n] | order(name asc) [0...6] {\n  _id,\n  name,\n  \"slug\": slug.current,\n  description,\n  price,\n  \"images\": images[]{\n    _key,\n    asset->{\n      _id,\n      url\n    },\n    hotspot\n  },\n  category->{\n    _id,\n    title,\n    \"slug\": slug.current\n  },\n  stock\n}": FEATURED_PRODUCTS_QUERYResult;
     "*[\n  _type == \"product\"\n  && category->slug.current == $categorySlug\n] | order(name asc) {\n  _id,\n  name,\n  \"slug\": slug.current,\n  price,\n  \"image\": images[0]{\n    asset->{\n      _id,\n      url\n    },\n    hotspot\n  },\n  category->{\n    _id,\n    title,\n    \"slug\": slug.current\n  },\n  material,\n  color,\n  stock\n}": PRODUCTS_BY_CATEGORY_QUERYResult;

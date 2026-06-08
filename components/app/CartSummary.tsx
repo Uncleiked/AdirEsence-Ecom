@@ -27,7 +27,7 @@ export function CartSummary({ hasStockIssues = false }: CartSummaryProps) {
         <span>{formatPrice(totalPrice)}</span>
       </div>
       <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-        Shipping calculated at checkout
+        Shipping and service charges calculated at checkout
       </p>
       <div className="mt-4">
         {hasStockIssues ? (
