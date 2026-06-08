@@ -138,18 +138,7 @@
   }
 }
 
-/* =============================================
-   GLOBAL LINK HOVER – Orange text on hover
-   Applies to all <a> tags EXCEPT .water-hover
-   ============================================= */
-a:not(.water-hover):hover {
-  color: #f97316 !important;
-  transition: color 0.3s ease-in-out;
-}
 
-a:not(.water-hover) {
-  transition: color 0.3s ease-in-out;
-}
 
 /* Custom scrollbar styling */
 ::-webkit-scrollbar {
