@@ -582,6 +582,46 @@ export type ORDER_BY_STRIPE_PAYMENT_ID_QUERYResult = {
 export type ORDER_BY_PAYMENT_ID_QUERYResult = {
   _id: string;
 } | null;
+// Variable: ORDER_DETAILS_BY_PAYMENT_ID_QUERY
+// Query: *[  _type == "order"  && (paymentId == $paymentId || stripePaymentId == $paymentId)][0] {  _id,  orderNumber,  clerkUserId,  email,  items[]{    _key,    quantity,    priceAtPurchase,    product->{      _id,      name,      "slug": slug.current,      "image": images[0]{        asset->{          _id,          url        }      }    }  },  total,  status,  address{    name,    line1,    line2,    city,    postcode,    country  },  stripePaymentId,  paymentId,  paymentProvider,  shippingFee,  serviceCharge,  createdAt}
+export type ORDER_DETAILS_BY_PAYMENT_ID_QUERYResult = {
+  _id: string;
+  orderNumber: string | null;
+  clerkUserId: string | null;
+  email: string | null;
+  items: Array<{
+    _key: string;
+    quantity: number | null;
+    priceAtPurchase: number | null;
+    product: {
+      _id: string;
+      name: string | null;
+      slug: string | null;
+      image: {
+        asset: {
+          _id: string;
+          url: string | null;
+        } | null;
+      } | null;
+    } | null;
+  }> | null;
+  total: number | null;
+  status: "cancelled" | "delivered" | "paid" | "shipped" | null;
+  address: {
+    name: string | null;
+    line1: string | null;
+    line2: string | null;
+    city: string | null;
+    postcode: string | null;
+    country: string | null;
+  } | null;
+  stripePaymentId: string | null;
+  paymentId: string | null;
+  paymentProvider: string | null;
+  shippingFee: number | null;
+  serviceCharge: number | null;
+  createdAt: string | null;
+} | null;
 
 // Source: ./lib/sanity/queries/products.ts
 // Variable: ALL_PRODUCTS_QUERY
@@ -960,6 +1000,7 @@ declare module "@sanity/client" {
     "*[\n  _type == \"order\"\n] | order(createdAt desc) [0...$limit] {\n  _id,\n  orderNumber,\n  email,\n  total,\n  status,\n  createdAt\n}": RECENT_ORDERS_QUERYResult;
     "*[\n  _type == \"order\"\n  && stripePaymentId == $stripePaymentId\n][0]{ _id }": ORDER_BY_STRIPE_PAYMENT_ID_QUERYResult;
     "*[\n  _type == \"order\"\n  && (paymentId == $paymentId || stripePaymentId == $paymentId)\n][0]{ _id }": ORDER_BY_PAYMENT_ID_QUERYResult;
+    "*[\n  _type == \"order\"\n  && (paymentId == $paymentId || stripePaymentId == $paymentId)\n][0] {\n  _id,\n  orderNumber,\n  clerkUserId,\n  email,\n  items[]{\n    _key,\n    quantity,\n    priceAtPurchase,\n    product->{\n      _id,\n      name,\n      \"slug\": slug.current,\n      \"image\": images[0]{\n        asset->{\n          _id,\n          url\n        }\n      }\n    }\n  },\n  total,\n  status,\n  address{\n    name,\n    line1,\n    line2,\n    city,\n    postcode,\n    country\n  },\n  stripePaymentId,\n  paymentId,\n  paymentProvider,\n  shippingFee,\n  serviceCharge,\n  createdAt\n}": ORDER_DETAILS_BY_PAYMENT_ID_QUERYResult;
     "*[\n  _type == \"product\"\n] | order(name asc) {\n  _id,\n  name,\n  \"slug\": slug.current,\n  description,\n  price,\n  \"images\": images[]{\n    _key,\n    asset->{\n      _id,\n      url\n    },\n    hotspot\n  },\n  category->{\n    _id,\n    title,\n    \"slug\": slug.current\n  },\n  material,\n  color,\n  dimensions,\n  stock,\n  featured,\n  assemblyRequired\n}": ALL_PRODUCTS_QUERYResult;
     "*[\n  _type == \"product\"\n  && featured == true\n  && stock > 0\n] | order(name asc) [0...6] {\n  _id,\n  name,\n  \"slug\": slug.current,\n  description,\n  price,\n  \"images\": images[]{\n    _key,\n    asset->{\n      _id,\n      url\n    },\n    hotspot\n  },\n  category->{\n    _id,\n    title,\n    \"slug\": slug.current\n  },\n  stock\n}": FEATURED_PRODUCTS_QUERYResult;
     "*[\n  _type == \"product\"\n  && category->slug.current == $categorySlug\n] | order(name asc) {\n  _id,\n  name,\n  \"slug\": slug.current,\n  price,\n  \"image\": images[0]{\n    asset->{\n      _id,\n      url\n    },\n    hotspot\n  },\n  category->{\n    _id,\n    title,\n    \"slug\": slug.current\n  },\n  material,\n  color,\n  stock\n}": PRODUCTS_BY_CATEGORY_QUERYResult;

@@ -130,9 +130,9 @@ export async function createCheckoutSession(
     const rates = await client.fetch(SHIPPING_RATES_QUERY);
     const shippingFee = calculateShippingFee(
       address.country,
-      address.city,
+      address.state || "",
       rates || {
-        shippingLagos: 5000,
+        shippingLagos: 50,
         shippingRestOfNigeria: 10000,
         shippingAfrica: 20000,
         shippingInternational: 50000,
@@ -328,7 +328,7 @@ export async function getCheckoutSession(sessionId: string) {
         id: order._id,
         customerEmail: order.email,
         customerName: order.address?.name || "",
-        amountTotal: Math.round(order.total * 100), // convert NGN to kobo
+        amountTotal: Math.round((order.total ?? 0) * 100), // convert NGN to kobo
         paymentStatus: order.status === "paid" ? "paid" : "unpaid",
         shippingAddress: {
           name: order.address?.name || "",

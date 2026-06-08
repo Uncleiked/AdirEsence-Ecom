@@ -85,7 +85,7 @@ export function CheckoutClient({ settings }: CheckoutClientProps) {
 
   // Default rates fallback
   const rates = {
-    shippingLagos: settings?.shippingLagos ?? 5000,
+    shippingLagos: settings?.shippingLagos ?? 50,
     shippingRestOfNigeria: settings?.shippingRestOfNigeria ?? 10000,
     shippingAfrica: settings?.shippingAfrica ?? 20000,
     shippingInternational: settings?.shippingInternational ?? 50000,
@@ -383,7 +383,7 @@ export function CheckoutClient({ settings }: CheckoutClientProps) {
                       className="flex h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 dark:border-zinc-800 dark:bg-zinc-950 dark:ring-offset-zinc-950 dark:focus-visible:ring-zinc-300"
                     >
                       <option value="">Select State</option>
-                      <option value="Lagos">Lagos State (₦5,000 Delivery)</option>
+                      <option value="Lagos">Lagos State (₦50 Delivery)</option>
                       <option value="Abuja">Abuja (₦10,000 Delivery)</option>
                       <option value="Rivers">Rivers (₦10,000 Delivery)</option>
                       <option value="Oyo">Oyo (₦10,000 Delivery)</option>
@@ -499,7 +499,7 @@ export function CheckoutClient({ settings }: CheckoutClientProps) {
                   <span className="group relative cursor-pointer text-zinc-400 hover:text-zinc-600">
                     <Info className="h-3.5 w-3.5" />
                     <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block w-48 rounded bg-zinc-900 p-2 text-[10px] font-normal leading-normal text-white shadow dark:bg-zinc-800">
-                      Lagos: ₦5k • Other NG: ₦10k • Africa: ₦20k • Intl: ₦50k
+                      Lagos: ₦50 • Other NG: ₦10k • Africa: ₦20k • Intl: ₦50k
                     </span>
                   </span>
                 </span>

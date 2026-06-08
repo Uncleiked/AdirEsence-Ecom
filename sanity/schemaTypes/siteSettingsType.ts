@@ -55,7 +55,7 @@ export const siteSettingsType = defineType({
       name: 'shippingLagos',
       title: 'Shipping Fee (Lagos)',
       type: 'number',
-      initialValue: 5000,
+      initialValue: 50,
       validation: (rule) => rule.required().min(0),
     }),
     defineField({

@@ -44,6 +44,7 @@ export function calculateShippingFee(
 
   // 1. Nigeria Check
   if (countryUpper === "NG" || countryUpper === "NIGERIA") {
+    if (!stateLower) return 0;
     if (stateLower === "lagos") {
       return rates.shippingLagos;
     }
