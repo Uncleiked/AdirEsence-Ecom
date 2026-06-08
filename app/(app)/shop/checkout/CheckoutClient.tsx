@@ -33,26 +33,30 @@ interface CheckoutClientProps {
 }
 
 const COUNTRIES = [
-  { group: "Africa (Paystack)", items: [
-    { code: "NG", name: "Nigeria" },
-    { code: "GH", name: "Ghana" },
-    { code: "KE", name: "Kenya" },
-    { code: "ZA", name: "South Africa" },
-    { code: "EG", name: "Egypt" },
-    { code: "RW", name: "Rwanda" },
-    { code: "SN", name: "Senegal" },
-  ]},
-  { group: "International (Stripe)", items: [
-    { code: "US", name: "United States" },
-    { code: "GB", name: "United Kingdom" },
-    { code: "CA", name: "Canada" },
-    { code: "AU", name: "Australia" },
-    { code: "DE", name: "Germany" },
-    { code: "FR", name: "France" },
-    { code: "ES", name: "Spain" },
-    { code: "IT", name: "Italy" },
-    { code: "NL", name: "Netherlands" },
-  ]}
+  {
+    group: "Africa (Paystack)", items: [
+      { code: "NG", name: "Nigeria" },
+      { code: "GH", name: "Ghana" },
+      { code: "KE", name: "Kenya" },
+      { code: "ZA", name: "South Africa" },
+      { code: "EG", name: "Egypt" },
+      { code: "RW", name: "Rwanda" },
+      { code: "SN", name: "Senegal" },
+    ]
+  },
+  {
+    group: "International (Stripe)", items: [
+      { code: "US", name: "United States" },
+      { code: "GB", name: "United Kingdom" },
+      { code: "CA", name: "Canada" },
+      { code: "AU", name: "Australia" },
+      { code: "DE", name: "Germany" },
+      { code: "FR", name: "France" },
+      { code: "ES", name: "Spain" },
+      { code: "IT", name: "Italy" },
+      { code: "NL", name: "Netherlands" },
+    ]
+  }
 ];
 
 export function CheckoutClient({ settings }: CheckoutClientProps) {
@@ -528,11 +532,10 @@ export function CheckoutClient({ settings }: CheckoutClientProps) {
                       {provider === "paystack" ? "Paystack (African countries)" : "Stripe (International)"}
                     </span>
                   </div>
-                  <span className={`inline-flex items-center rounded px-2 py-0.5 text-[10px] font-bold uppercase ${
-                    provider === "paystack" 
-                      ? "bg-sky-50 text-sky-700 border border-sky-100 dark:bg-sky-950/20 dark:text-sky-300 dark:border-sky-900/30" 
+                  <span className={`inline-flex items-center rounded px-2 py-0.5 text-[10px] font-bold uppercase ${provider === "paystack"
+                      ? "bg-sky-50 text-sky-700 border border-sky-100 dark:bg-sky-950/20 dark:text-sky-300 dark:border-sky-900/30"
                       : "bg-indigo-50 text-indigo-700 border border-indigo-100 dark:bg-indigo-950/20 dark:text-indigo-300 dark:border-indigo-900/30"
-                  }`}>
+                    }`}>
                     {provider}
                   </span>
                 </div>
