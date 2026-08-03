@@ -10,6 +10,7 @@ import {
   CreditCard,
   ExternalLink,
   Edit2,
+  AlertTriangle,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -26,7 +27,19 @@ interface OrderDetailProjection {
   total: number;
   status: string;
   createdAt: string;
-  stripePaymentId: string | null;
+  paymentId: string | null;
+  paymentProvider: string | null;
+  shippingFee: number | null;
+  serviceCharge: number | null;
+  inventoryIssue: {
+    reason: string | null;
+    items: Array<{
+      _key: string;
+      name: string;
+      requested: number;
+      available: number;
+    }>;
+  } | null;
   address: {
     name: string;
     line1: string;
@@ -61,7 +74,14 @@ function OrderDetailContent({ handle }: { handle: DocumentHandle }) {
       total,
       status,
       createdAt,
-      stripePaymentId,
+      paymentId,
+      paymentProvider,
+      shippingFee,
+      serviceCharge,
+      inventoryIssue{
+        reason,
+        items[]{ _key, name, requested, available }
+      },
       address{
         name,
         line1,
@@ -133,6 +153,24 @@ function OrderDetailContent({ handle }: { handle: DocumentHandle }) {
       <div className="grid gap-6 lg:grid-cols-5 lg:gap-8">
         {/* Order Items */}
         <div className="space-y-6 lg:col-span-3">
+          {data.status === "inventory_issue" && data.inventoryIssue && (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
+                <div>
+                  <h2 className="font-semibold">Paid order needs attention</h2>
+                  <p className="mt-1 text-sm">{data.inventoryIssue.reason}</p>
+                  <ul className="mt-2 space-y-1 text-sm">
+                    {data.inventoryIssue.items?.map((item) => (
+                      <li key={item._key}>
+                        {item.name}: requested {item.requested}, available {item.available}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
           <div className="rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
             <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-800 sm:px-6 sm:py-4">
               <h2 className="font-semibold text-zinc-900 dark:text-zinc-100">
@@ -210,7 +248,17 @@ function OrderDetailContent({ handle }: { handle: DocumentHandle }) {
                   Subtotal
                 </span>
                 <span className="text-zinc-900 dark:text-zinc-100">
-                  {formatPrice(data.total)}
+                  {formatPrice(
+                    data.total -
+                      (data.shippingFee ?? 0) -
+                      (data.serviceCharge ?? 0),
+                  )}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-zinc-500 dark:text-zinc-400">Shipping</span>
+                <span className="text-zinc-900 dark:text-zinc-100">
+                  {formatPrice(data.shippingFee ?? 0)}
                 </span>
               </div>
               <div className="border-t border-zinc-200 pt-3 dark:border-zinc-800">
@@ -241,9 +289,9 @@ function OrderDetailContent({ handle }: { handle: DocumentHandle }) {
               <p className="break-all text-zinc-900 dark:text-zinc-100">
                 {data.email}
               </p>
-              {data.stripePaymentId && (
+              {data.paymentId && (
                 <p className="break-all text-xs text-zinc-500 dark:text-zinc-400">
-                  Payment: {data.stripePaymentId}
+                  {data.paymentProvider === "paystack" ? "Paystack" : "Payment"}: {data.paymentId}
                 </p>
               )}
             </div>

@@ -2,8 +2,11 @@
 
 import { writeClient } from "./client";
 import { revalidatePath } from "next/cache";
+import { requireAdminAccess } from "./auth";
 
 export async function updateProductStock(id: string, newStock: number) {
+  await requireAdminAccess();
+
   try {
     await writeClient
       .patch(id)
@@ -20,6 +23,8 @@ export async function updateProductStock(id: string, newStock: number) {
 }
 
 export async function updateProductPrice(id: string, newPrice: number) {
+  await requireAdminAccess();
+
   try {
     await writeClient
       .patch(id)
@@ -35,6 +40,8 @@ export async function updateProductPrice(id: string, newPrice: number) {
 }
 
 export async function toggleProductFeatured(id: string, isFeatured: boolean) {
+  await requireAdminAccess();
+
   try {
     await writeClient
       .patch(id)
@@ -49,7 +56,12 @@ export async function toggleProductFeatured(id: string, isFeatured: boolean) {
   }
 }
 
-export async function updateProductBase(id: string, data: any) {
+export async function updateProductBase(
+  id: string,
+  data: Record<string, unknown>,
+) {
+  await requireAdminAccess();
+
   try {
     if (id === "new") {
       // Create new product
@@ -76,7 +88,9 @@ export async function updateProductBase(id: string, data: any) {
   }
 }
 
-export async function updateProductImages(id: string, images: any[]) {
+export async function updateProductImages(id: string, images: unknown[]) {
+  await requireAdminAccess();
+
   try {
     if (id === "new") return { success: true }; // Handled by create
     await writeClient
@@ -92,6 +106,8 @@ export async function updateProductImages(id: string, images: any[]) {
 }
 
 export async function deleteProduct(id: string) {
+  await requireAdminAccess();
+
   try {
     await writeClient.delete(id);
     revalidatePath("/admin/inventory");
@@ -104,6 +120,8 @@ export async function deleteProduct(id: string) {
 }
 
 export async function updateOrderStatus(id: string, newStatus: string) {
+  await requireAdminAccess();
+
   try {
     await writeClient
       .patch(id)
@@ -129,6 +147,8 @@ export async function updateCustomerAddress(
     country?: string;
   }
 ) {
+  await requireAdminAccess();
+
   try {
     await writeClient
       .patch(customerId)
@@ -149,6 +169,8 @@ export async function updateCustomerAddress(
 }
 
 export async function uploadImage(formData: FormData) {
+  await requireAdminAccess();
+
   try {
     const file = formData.get("file") as File;
     if (!file) throw new Error("No file provided");

@@ -3,10 +3,16 @@ import {
   Truck,
   XCircle,
   CreditCard,
+  AlertTriangle,
   type LucideIcon,
 } from "lucide-react";
 
-export type OrderStatusValue = "paid" | "shipped" | "delivered" | "cancelled";
+export type OrderStatusValue =
+  | "inventory_issue"
+  | "paid"
+  | "shipped"
+  | "delivered"
+  | "cancelled";
 
 export interface OrderStatusConfig {
   /** The status value/key */
@@ -27,6 +33,15 @@ export interface OrderStatusConfig {
 
 export const ORDER_STATUS_CONFIG: Record<OrderStatusValue, OrderStatusConfig> =
   {
+    inventory_issue: {
+      value: "inventory_issue",
+      label: "Inventory issue",
+      color: "bg-amber-100 text-amber-900",
+      icon: AlertTriangle,
+      emoji: "⚠️",
+      iconColor: "text-amber-600 dark:text-amber-400",
+      iconBgColor: "bg-amber-100 dark:bg-amber-900/30",
+    },
     paid: {
       value: "paid",
       label: "Paid",

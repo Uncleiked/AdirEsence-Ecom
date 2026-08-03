@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -13,14 +13,11 @@ import { formatPrice } from "@/lib/utils";
 import {
   useCartItems,
   useTotalPrice,
-  useTotalItems,
 } from "@/lib/store/cart-store-provider";
 import { useCartStock } from "@/lib/hooks/useCartStock";
 import { createCheckoutSession } from "@/lib/actions/checkout";
 import {
-  isAfricanCountry,
   calculateShippingFee,
-  calculateServiceCharge,
 } from "@/lib/constants/payment";
 
 interface CheckoutClientProps {
@@ -34,7 +31,7 @@ interface CheckoutClientProps {
 
 const COUNTRIES = [
   {
-    group: "Africa (Paystack)", items: [
+    group: "Africa", items: [
       { code: "NG", name: "Nigeria" },
       { code: "GH", name: "Ghana" },
       { code: "KE", name: "Kenya" },
@@ -45,7 +42,7 @@ const COUNTRIES = [
     ]
   },
   {
-    group: "International (Stripe)", items: [
+    group: "International", items: [
       { code: "US", name: "United States" },
       { code: "GB", name: "United Kingdom" },
       { code: "CA", name: "Canada" },
@@ -63,8 +60,7 @@ export function CheckoutClient({ settings }: CheckoutClientProps) {
   const router = useRouter();
   const items = useCartItems();
   const subtotal = useTotalPrice();
-  const totalItems = useTotalItems();
-  const { stockMap, isLoading: isStockLoading, hasStockIssues } = useCartStock(items);
+  const { isLoading: isStockLoading, hasStockIssues } = useCartStock(items);
   const [isPending, startTransition] = useTransition();
 
   // Form State
@@ -84,47 +80,20 @@ export function CheckoutClient({ settings }: CheckoutClientProps) {
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
   // Default rates fallback
-  const rates = {
-    shippingLagos: settings?.shippingLagos ?? 50,
-    shippingRestOfNigeria: settings?.shippingRestOfNigeria ?? 10000,
-    shippingAfrica: settings?.shippingAfrica ?? 20000,
-    shippingInternational: settings?.shippingInternational ?? 50000,
-  };
+  const rates = useMemo(
+    () => ({
+      shippingLagos: settings?.shippingLagos ?? 50,
+      shippingRestOfNigeria: settings?.shippingRestOfNigeria ?? 10_000,
+      shippingAfrica: settings?.shippingAfrica ?? 20_000,
+      shippingInternational: settings?.shippingInternational ?? 50_000,
+    }),
+    [settings],
+  );
 
-  // Calculations
-  const [shippingFee, setShippingFee] = useState(0);
-  const [serviceCharge, setServiceCharge] = useState(0);
-  const [total, setTotal] = useState(subtotal);
-  const [provider, setProvider] = useState<"stripe" | "paystack">("paystack");
-
-  // Recalculate shipping & service charges dynamically when address fields change
-  useEffect(() => {
-    if (!formData.country) {
-      setShippingFee(0);
-      setServiceCharge(0);
-      setTotal(subtotal);
-      return;
-    }
-
-    const calculatedShipping = calculateShippingFee(
-      formData.country,
-      formData.state,
-      rates
-    );
-
-    const activeProvider = isAfricanCountry(formData.country) ? "paystack" : "stripe";
-    setProvider(activeProvider);
-
-    const calculatedServiceCharge = calculateServiceCharge(
-      subtotal + calculatedShipping,
-      activeProvider,
-      true // Paystack defaults to local card formula for routing
-    );
-
-    setShippingFee(calculatedShipping);
-    setServiceCharge(calculatedServiceCharge);
-    setTotal(subtotal + calculatedShipping + calculatedServiceCharge);
-  }, [formData.country, formData.state, subtotal, settings]);
+  const shippingFee = formData.country
+    ? calculateShippingFee(formData.country, formData.state, rates)
+    : 0;
+  const total = subtotal + shippingFee;
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -185,7 +154,7 @@ export function CheckoutClient({ settings }: CheckoutClientProps) {
       } else {
         const errMsg = result.error ?? "Checkout failed";
         setPaymentError(errMsg);
-        toast.error("Payment Gateway Error", {
+        toast.error("Checkout Error", {
           description: errMsg,
         });
       }
@@ -508,35 +477,17 @@ export function CheckoutClient({ settings }: CheckoutClientProps) {
                 </span>
               </div>
 
-              <div className="flex justify-between items-center">
-                <span className="text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
-                  Service Charge
-                  <span className="group relative cursor-pointer text-zinc-400 hover:text-zinc-600">
-                    <Info className="h-3.5 w-3.5" />
-                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block w-48 rounded bg-zinc-900 p-2 text-[10px] font-normal leading-normal text-white shadow dark:bg-zinc-800">
-                      Payment processor fee (Stripe 2.9% + ₦100, Paystack 1.5% + ₦100) added to cover transaction costs.
-                    </span>
-                  </span>
-                </span>
-                <span className="font-semibold text-zinc-900 dark:text-zinc-100">
-                  {serviceCharge > 0 ? formatPrice(serviceCharge) : <span className="text-xs text-amber-600">Calculated</span>}
-                </span>
-              </div>
-
-              {/* Gateway routing badge */}
+              {/* Gateway badge */}
               <div className="pt-2">
                 <div className="flex items-center justify-between rounded-lg border border-zinc-100 bg-zinc-50/50 p-2.5 dark:border-zinc-800/40 dark:bg-zinc-900/30">
                   <div className="flex flex-col">
                     <span className="text-[10px] uppercase font-bold text-zinc-400">Gateway Route</span>
                     <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                      {provider === "paystack" ? "Paystack (African countries)" : "Stripe (International)"}
+                      Paystack (all destinations)
                     </span>
                   </div>
-                  <span className={`inline-flex items-center rounded px-2 py-0.5 text-[10px] font-bold uppercase ${provider === "paystack"
-                      ? "bg-sky-50 text-sky-700 border border-sky-100 dark:bg-sky-950/20 dark:text-sky-300 dark:border-sky-900/30"
-                      : "bg-indigo-50 text-indigo-700 border border-indigo-100 dark:bg-indigo-950/20 dark:text-indigo-300 dark:border-indigo-900/30"
-                    }`}>
-                    {provider}
+                  <span className="inline-flex items-center rounded border border-sky-100 bg-sky-50 px-2 py-0.5 text-[10px] font-bold uppercase text-sky-700 dark:border-sky-900/30 dark:bg-sky-950/20 dark:text-sky-300">
+                    Paystack
                   </span>
                 </div>
               </div>
@@ -565,7 +516,7 @@ export function CheckoutClient({ settings }: CheckoutClientProps) {
                 ) : (
                   <>
                     <CreditCard className="mr-2 h-5 w-5" />
-                    Pay {formatPrice(total)} with {provider === "paystack" ? "Paystack" : "Stripe"}
+                    Pay {formatPrice(total)} with Paystack
                   </>
                 )}
               </Button>
@@ -578,7 +529,7 @@ export function CheckoutClient({ settings }: CheckoutClientProps) {
             )}
 
             <p className="mt-4 text-center text-[10px] text-zinc-400">
-              By clicking, you will be redirected to {provider === "paystack" ? "Paystack's" : "Stripe's"} secure hosted checkout page.
+              By clicking, you will be redirected to Paystack&apos;s secure hosted checkout page.
             </p>
           </div>
 

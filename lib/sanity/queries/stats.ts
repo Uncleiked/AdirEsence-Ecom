@@ -50,6 +50,7 @@ export const ORDERS_LAST_7_DAYS_QUERY = defineQuery(`*[
  * Excludes draft documents to get accurate counts
  */
 export const ORDER_STATUS_DISTRIBUTION_QUERY = defineQuery(`{
+  "inventoryIssue": count(*[_type == "order" && status == "inventory_issue" && !(_id in path("drafts.**"))]),
   "paid": count(*[_type == "order" && status == "paid" && !(_id in path("drafts.**"))]),
   "shipped": count(*[_type == "order" && status == "shipped" && !(_id in path("drafts.**"))]),
   "delivered": count(*[_type == "order" && status == "delivered" && !(_id in path("drafts.**"))]),

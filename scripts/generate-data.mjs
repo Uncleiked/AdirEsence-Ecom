@@ -12,7 +12,7 @@ const emit = (doc) => console.log(JSON.stringify(doc));
 // Constants
 const MATERIALS = ["Leather", "Fabric", "Wood", "Metal", "Glass"];
 const COLORS = ["Black", "White", "Red", "Blue", "Green", "Yellow", "Brown", "Grey"];
-const STATUSES = ["pending", "paid", "shipped", "delivered", "cancelled"];
+const STATUSES = ["paid", "shipped", "delivered", "cancelled"];
 
 // 1. Categories
 const CATEGORY_COUNT = 5;
@@ -41,7 +41,7 @@ for (let i = 0; i < CUSTOMER_COUNT; i++) {
     name: faker.person.fullName(),
     email: faker.internet.email(),
     clerkUserId: `user_${faker.string.alphanumeric(10)}`,
-    stripeCustomerId: `cus_${faker.string.alphanumeric(10)}`,
+    paystackCustomerCode: `CUS_${faker.string.alphanumeric(10)}`,
     createdAt: faker.date.past().toISOString(),
   });
 }

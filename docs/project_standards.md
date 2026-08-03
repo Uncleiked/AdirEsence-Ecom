@@ -45,15 +45,16 @@ This document serves as the central source of truth for "Rules" and best practic
 - **Components**: Prefer Clerk's pre-built components (`<SignIn />`, `<UserButton />`) for standard flows.
 - **Hooks**: Use `useUser()` for client-side user data and `auth()` (server-side) for protected API routes.
 
-## 5. Paystack & Stripe (Payments)
+## 5. Paystack (Payments)
 
 **Goal**: Secure, reliable payment processing.
 
 - **Security**: NEVER expose secret keys in client-side code. Use server actions or API routes.
 - **Webhooks**:
-  - Handle webhooks in `app/api/webhooks/[provider]/route.ts`.
+  - Handle Paystack webhooks in `app/webhook/paystack/route.ts`.
   - Verify webhook signatures before processing events.
-- **Idempotency**: Ensure webhook handlers are idempotent (can handle the same event multiple times without error).
+- **Idempotency**: Use deterministic order IDs and keep order creation plus stock decrements in one transaction.
+- **Inventory**: Never decrement stock below zero. Paid orders that cannot reserve inventory must be marked `inventory_issue` for manual resolution.
 - **Environment**: strict separation of Live and Test keys in `.env.local`.
 
 ## 6. General Coding Standards

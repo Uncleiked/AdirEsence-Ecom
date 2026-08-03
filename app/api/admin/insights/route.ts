@@ -1,6 +1,8 @@
 import { generateText } from "ai";
 import { google } from "@ai-sdk/google";
 import { client } from "@/sanity/lib/client";
+import { getAdminAccess } from "@/sanity/lib/auth";
+import { rateLimitHeaders, takeRateLimit } from "@/lib/security/rate-limit";
 
 import {
   ORDERS_LAST_7_DAYS_QUERY,
@@ -29,6 +31,7 @@ interface Order {
 }
 
 interface StatusDistribution {
+  inventoryIssue: number;
   paid: number;
   shipped: number;
   delivered: number;
@@ -67,6 +70,33 @@ interface RevenuePeriod {
 }
 
 export async function GET() {
+  const access = await getAdminAccess();
+
+  if (!access.authorized) {
+    return Response.json(
+      {
+        success: false,
+        error:
+          access.reason === "unauthenticated" ? "Unauthorized" : "Forbidden",
+      },
+      { status: access.reason === "unauthenticated" ? 401 : 403 },
+    );
+  }
+
+  const rateLimit = takeRateLimit({
+    key: `admin-insights:${access.userId}`,
+    limit: 6,
+    windowMs: 5 * 60 * 1_000,
+  });
+  const responseHeaders = rateLimitHeaders(rateLimit);
+
+  if (!rateLimit.allowed) {
+    return Response.json(
+      { success: false, error: "Too many requests" },
+      { status: 429, headers: responseHeaders },
+    );
+  }
+
   try {
     // Calculate date ranges
     const now = new Date();
@@ -312,20 +342,23 @@ Generate insights in the required JSON format.`,
       };
     }
 
-    return Response.json({
-      success: true,
-      insights,
-      rawMetrics: {
-        currentRevenue,
-        previousRevenue,
-        revenueChange: revenueChange.toFixed(1),
-        orderCount: revenuePeriod.currentOrderCount || 0,
-        avgOrderValue: avgOrderValue.toFixed(2),
-        unfulfilledCount: unfulfilledOrders.length,
-        lowStockCount: productsInventory.filter((p) => p.stock <= 5).length,
+    return Response.json(
+      {
+        success: true,
+        insights,
+        rawMetrics: {
+          currentRevenue,
+          previousRevenue,
+          revenueChange: revenueChange.toFixed(1),
+          orderCount: revenuePeriod.currentOrderCount || 0,
+          avgOrderValue: avgOrderValue.toFixed(2),
+          unfulfilledCount: unfulfilledOrders.length,
+          lowStockCount: productsInventory.filter((p) => p.stock <= 5).length,
+        },
+        generatedAt: new Date().toISOString(),
       },
-      generatedAt: new Date().toISOString(),
-    });
+      { headers: responseHeaders },
+    );
   } catch (error) {
     console.error("Failed to generate insights:", error);
     return Response.json(
@@ -333,7 +366,7 @@ Generate insights in the required JSON format.`,
         success: false,
         error: "Failed to generate insights",
       },
-      { status: 500 }
+      { status: 500, headers: responseHeaders },
     );
   }
 }

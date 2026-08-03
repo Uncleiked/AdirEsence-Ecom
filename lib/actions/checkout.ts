@@ -1,52 +1,31 @@
 "use server";
 
+import { createHash } from "node:crypto";
 import { auth, currentUser } from "@clerk/nextjs/server";
-import Stripe from "stripe";
-import { client } from "@/sanity/lib/client";
+import { client, writeClient } from "@/sanity/lib/client";
 import { PRODUCTS_BY_IDS_QUERY } from "@/lib/sanity/queries/products";
-import { getOrCreateStripeCustomer } from "@/lib/actions/customer";
-import { createPaystackCheckoutSession } from "@/lib/actions/paystack";
-import {
-  getPaymentProvider,
-  calculateShippingFee,
-  calculateServiceCharge,
-} from "@/lib/constants/payment";
+import { CUSTOMER_BY_EMAIL_QUERY } from "@/lib/sanity/queries/customers";
 import { ORDER_DETAILS_BY_PAYMENT_ID_QUERY } from "@/lib/sanity/queries/orders";
-
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error("STRIPE_SECRET_KEY is not defined");
-}
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2026-02-25.clover",
-  typescript: true,
-});
-
-// Types
-interface CartItem {
-  productId: string;
-  name: string;
-  price: number;
-  quantity: number;
-  image?: string;
-}
-
-interface Address {
-  name: string;
-  line1: string;
-  line2?: string;
-  city: string;
-  postcode: string;
-  country: string;
-  email?: string;
-  phone?: string;
-  state?: string;
-}
+import { calculateShippingFee } from "@/lib/constants/payment";
+import { initializePaystackTransaction } from "@/lib/payments/paystack";
+import {
+  checkoutRequestSchema,
+  type CheckoutAddress,
+  type CheckoutItem,
+  type PaystackCheckoutMetadata,
+} from "@/lib/validation/checkout";
 
 interface CheckoutResult {
   success: boolean;
   url?: string;
   error?: string;
+}
+
+interface CheckoutProduct {
+  _id: string;
+  name?: string | null;
+  price?: number | null;
+  stock?: number | null;
 }
 
 const SHIPPING_RATES_QUERY = `*[_type == "siteSettings"] | order(_updatedAt desc)[0] {
@@ -56,210 +35,209 @@ const SHIPPING_RATES_QUERY = `*[_type == "siteSettings"] | order(_updatedAt desc
   shippingInternational
 }`;
 
+const DEFAULT_SHIPPING_RATES = {
+  shippingLagos: 50,
+  shippingRestOfNigeria: 10_000,
+  shippingAfrica: 20_000,
+  shippingInternational: 50_000,
+};
+
+function getBaseUrl(): string {
+  const configuredUrl =
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
+    "http://localhost:3000";
+
+  return new URL(configuredUrl).origin;
+}
+
+async function getOrCreateCustomer(
+  email: string,
+  name: string,
+  clerkUserId: string,
+): Promise<string> {
+  const existingCustomer = await client.fetch(CUSTOMER_BY_EMAIL_QUERY, {
+    email,
+  });
+
+  if (existingCustomer?._id) {
+    await writeClient
+      .patch(existingCustomer._id)
+      .set({ clerkUserId, name })
+      .commit();
+    return existingCustomer._id;
+  }
+
+  const idHash = createHash("sha256").update(clerkUserId).digest("hex");
+  const customerId = `customer.clerk.${idHash}`;
+
+  await writeClient.createIfNotExists({
+    _id: customerId,
+    _type: "customer",
+    email,
+    name,
+    clerkUserId,
+    createdAt: new Date().toISOString(),
+  });
+
+  return customerId;
+}
+
 /**
- * Creates a Checkout Session (Stripe or Paystack) from cart items and address.
- * Validates stock, prices, shipping rates, and service fees on the server to prevent tampering.
+ * Starts the only supported checkout flow: an authenticated Paystack payment.
+ * Client prices are ignored; prices, stock, shipping, and totals are rebuilt here.
  */
 export async function createCheckoutSession(
-  items: CartItem[],
-  address: Address
+  items: CheckoutItem[],
+  address: CheckoutAddress,
 ): Promise<CheckoutResult> {
   try {
-    // 1. Verify user is authenticated
-    const { userId } = await auth();
-    const user = await currentUser();
+    const [{ userId }, user] = await Promise.all([auth(), currentUser()]);
 
     if (!userId || !user) {
       return { success: false, error: "Please sign in to checkout" };
     }
 
-    // 2. Validate cart items and address details
-    if (!items || items.length === 0) {
-      return { success: false, error: "Your cart is empty" };
+    const request = checkoutRequestSchema.safeParse({ items, address });
+
+    if (!request.success) {
+      const issue = request.error.issues[0];
+      console.warn("Rejected invalid checkout request", {
+        code: issue?.code,
+        path: issue?.path.join("."),
+      });
+      return {
+        success: false,
+        error:
+          issue?.code === "unrecognized_keys"
+            ? "Your saved cart data is outdated. Please refresh the page and try again."
+            : (issue?.message ?? "Invalid checkout details"),
+      };
     }
 
-    if (!address.name || !address.line1 || !address.city || !address.country) {
-      return { success: false, error: "Please enter your full delivery address details" };
-    }
+    const { items: parsedItems, address: parsedAddress } = request.data;
+    const productIds = parsedItems.map((item) => item.productId);
+    const products = await client.fetch<CheckoutProduct[]>(
+      PRODUCTS_BY_IDS_QUERY,
+      { ids: productIds },
+    );
+    const productById = new Map(
+      products.map((product) => [product._id, product]),
+    );
 
-    // 3. Fetch product details from Sanity to validate prices/stock
-    const productIds = items.map((item) => item.productId);
-    const products = await client.fetch(PRODUCTS_BY_IDS_QUERY, {
-      ids: productIds,
-    });
-
-    // 4. Validate stock and calculate net subtotal
     const validationErrors: string[] = [];
-    const validatedItems: {
-      product: (typeof products)[number];
-      quantity: number;
-    }[] = [];
+    const orderItems: PaystackCheckoutMetadata["items"] = [];
     let subtotal = 0;
 
-    for (const item of items) {
-      const product = products.find(
-        (p: { _id: string }) => p._id === item.productId
-      );
+    for (const item of parsedItems) {
+      const product = productById.get(item.productId);
+      const stock = product?.stock;
+      const unitPrice = product?.price;
 
       if (!product) {
         validationErrors.push(`Product "${item.name}" is no longer available`);
         continue;
       }
 
-      if ((product.stock ?? 0) === 0) {
-        validationErrors.push(`"${product.name}" is out of stock`);
-        continue;
-      }
-
-      if (item.quantity > (product.stock ?? 0)) {
+      if (
+        typeof stock !== "number" ||
+        !Number.isInteger(stock) ||
+        stock < item.quantity
+      ) {
         validationErrors.push(
-          `Only ${product.stock} of "${product.name}" available`
+          stock && stock > 0
+            ? `Only ${stock} of "${product.name ?? item.name}" available`
+            : `"${product.name ?? item.name}" is out of stock`,
         );
         continue;
       }
 
-      validatedItems.push({ product, quantity: item.quantity });
-      subtotal += (product.price ?? 0) * item.quantity;
+      if (
+        typeof unitPrice !== "number" ||
+        !Number.isFinite(unitPrice) ||
+        unitPrice < 0
+      ) {
+        validationErrors.push(
+          `"${product.name ?? item.name}" does not have a valid price`,
+        );
+        continue;
+      }
+
+      orderItems.push({
+        productId: product._id,
+        name: product.name ?? item.name,
+        quantity: item.quantity,
+        unitPrice,
+      });
+      subtotal += unitPrice * item.quantity;
     }
 
     if (validationErrors.length > 0) {
       return { success: false, error: validationErrors.join(". ") };
     }
 
-    // 5. Fetch shipping rates from Sanity to calculate shipping fee securely
     const rates = await client.fetch(SHIPPING_RATES_QUERY);
     const shippingFee = calculateShippingFee(
-      address.country,
-      address.state || "",
-      rates || {
-        shippingLagos: 50,
-        shippingRestOfNigeria: 10000,
-        shippingAfrica: 20000,
-        shippingInternational: 50000,
-      }
+      parsedAddress.country,
+      parsedAddress.state,
+      rates || DEFAULT_SHIPPING_RATES,
     );
 
-    // 6. Determine routing based on country code
-    const provider = getPaymentProvider(address.country);
+    // Paystack fees depend on the payment instrument, which is not known until
+    // hosted checkout. The store absorbs the processor fee instead of guessing.
+    const serviceCharge = 0;
+    const amountKobo = Math.round((subtotal + shippingFee) * 100);
 
-    // 7. Calculate service charge (transaction fee)
-    // Assume local NG card if using Paystack (most common, or standard rate)
-    const serviceCharge = calculateServiceCharge(
-      subtotal + shippingFee,
-      provider,
-      true
+    if (!Number.isSafeInteger(amountKobo) || amountKobo <= 0) {
+      return { success: false, error: "The checkout total is invalid" };
+    }
+
+    const userEmail =
+      user.emailAddresses.find(
+        (entry) => entry.id === user.primaryEmailAddressId,
+      )?.emailAddress ?? user.emailAddresses[0]?.emailAddress;
+
+    if (!userEmail) {
+      return {
+        success: false,
+        error: "Your account needs a verified email before checkout",
+      };
+    }
+
+    const sanityCustomerId = await getOrCreateCustomer(
+      userEmail,
+      parsedAddress.name,
+      userId,
     );
-
-    // 8. Execute Paystack flow if provider is Paystack
-    if (provider === "paystack") {
-      return await createPaystackCheckoutSession(
-        items,
-        address,
-        shippingFee,
-        serviceCharge
-      );
-    }
-
-    // 9. Execute Stripe flow if provider is Stripe
-    // Prepare line items
-    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] =
-      validatedItems.map(({ product, quantity }) => ({
-        price_data: {
-          currency: "ngn",
-          product_data: {
-            name: product.name ?? "Product",
-            images: product.image?.asset?.url ? [product.image.asset.url] : [],
-            metadata: {
-              productId: product._id,
-            },
-          },
-          unit_amount: Math.round((product.price ?? 0) * 100), // Convert to kobo/cents
-        },
-        quantity,
-      }));
-
-    // Add shipping fee as a separate line item
-    if (shippingFee > 0) {
-      lineItems.push({
-        price_data: {
-          currency: "ngn",
-          product_data: {
-            name: "Shipping & Delivery",
-            description: `Delivery charge for ${address.city}, ${address.country}`,
-          },
-          unit_amount: Math.round(shippingFee * 100),
-        },
-        quantity: 1,
-      });
-    }
-
-    // Add service charge as a separate line item
-    if (serviceCharge > 0) {
-      lineItems.push({
-        price_data: {
-          currency: "ngn",
-          product_data: {
-            name: "Service Charge",
-            description: "Processor gateway fee",
-          },
-          unit_amount: Math.round(serviceCharge * 100),
-        },
-        quantity: 1,
-      });
-    }
-
-    // Get or create Stripe customer
-    const userEmail = user.emailAddresses[0]?.emailAddress ?? "";
-    const userName = address.name;
-
-    const { stripeCustomerId, sanityCustomerId } =
-      await getOrCreateStripeCustomer(userEmail, userName, userId);
-
-    // Prepare metadata
-    const metadata = {
+    const metadata: PaystackCheckoutMetadata = {
+      version: 1,
       clerkUserId: userId,
       userEmail,
       sanityCustomerId,
-      productIds: validatedItems.map((i) => i.product._id).join(","),
-      quantities: validatedItems.map((i) => i.quantity).join(","),
-      shippingFee: shippingFee.toString(),
-      serviceCharge: serviceCharge.toString(),
-      shippingName: address.name,
-      shippingLine1: address.line1,
-      shippingLine2: address.line2 || "",
-      shippingCity: address.city,
-      shippingPostcode: address.postcode,
-      shippingCountry: address.country,
+      items: orderItems,
+      shippingFee,
+      serviceCharge,
+      expectedAmountKobo: amountKobo,
+      address: parsedAddress,
     };
 
-    const baseUrl =
-      process.env.NEXT_PUBLIC_BASE_URL ||
-      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
-      "http://localhost:3000";
-
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      payment_method_types: ["card"],
-      line_items: lineItems,
-      customer: stripeCustomerId,
+    const transaction = await initializePaystackTransaction({
+      email: userEmail,
+      amountKobo,
       metadata,
-      success_url: `${baseUrl}/shop/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/shop/checkout`,
+      baseUrl: getBaseUrl(),
     });
 
-    return { success: true, url: session.url ?? undefined };
+    return { success: true, url: transaction.authorizationUrl };
   } catch (error) {
-    console.error("Stripe/Unified Checkout session error:", error);
+    console.error("Paystack checkout session error", error);
     return {
       success: false,
       error: "Something went wrong. Please try again.",
     };
   }
 }
-
-/**
- * Retrieves a checkout session by ID (works for both Stripe sessions and Paystack references in Sanity)
- */
+/** Retrieves a completed Paystack checkout from the local order record. */
 export async function getCheckoutSession(sessionId: string) {
   try {
     const { userId } = await auth();
@@ -268,85 +246,61 @@ export async function getCheckoutSession(sessionId: string) {
       return { success: false, error: "Not authenticated" };
     }
 
-    // Check if this is a Stripe Session ID (typically starts with cs_)
-    if (sessionId.startsWith("cs_")) {
-      try {
-        const session = await stripe.checkout.sessions.retrieve(sessionId, {
-          expand: ["line_items", "customer_details"],
-        });
-
-        // Verify the session belongs to this user
-        if (session.metadata?.clerkUserId !== userId) {
-          return { success: false, error: "Session not found" };
-        }
-
-        return {
-          success: true,
-          session: {
-            id: session.id,
-            customerEmail: session.customer_details?.email,
-            customerName: session.customer_details?.name,
-            amountTotal: session.amount_total,
-            paymentStatus: session.payment_status,
-            shippingAddress: {
-              name: session.customer_details?.name ?? "",
-              line1: session.customer_details?.address?.line1 ?? "",
-              line2: session.customer_details?.address?.line2 ?? "",
-              city: session.customer_details?.address?.city ?? "",
-              postcode: session.customer_details?.address?.postal_code ?? "",
-              country: session.customer_details?.address?.country ?? "",
-            },
-            lineItems: session.line_items?.data.map((item) => ({
-              name: item.description,
-              quantity: item.quantity,
-              amount: item.amount_total,
-            })),
-          },
-        };
-      } catch (stripeError) {
-        console.warn("Failed to retrieve from Stripe, falling back to Sanity search:", stripeError);
-      }
+    if (
+      typeof sessionId !== "string" ||
+      sessionId.length > 200 ||
+      !/^[A-Za-z0-9.=-]+$/.test(sessionId)
+    ) {
+      return { success: false, error: "Order not found" };
     }
 
-    // Fallback: Search in Sanity (for Paystack references or completed Stripe sessions)
     const order = await client.fetch(ORDER_DETAILS_BY_PAYMENT_ID_QUERY, {
       paymentId: sessionId,
     });
 
-    if (!order) {
+    if (!order || order.clerkUserId !== userId) {
       return { success: false, error: "Order not found" };
     }
 
-    // Verify the order belongs to this user
-    if (order.clerkUserId !== userId) {
-      return { success: false, error: "Unauthorized access to order details" };
-    }
+    const paidStatuses = new Set([
+      "paid",
+      "inventory_issue",
+      "shipped",
+      "delivered",
+    ]);
 
     return {
       success: true,
       session: {
         id: order._id,
+        orderNumber: order.orderNumber,
+        orderStatus: order.status,
         customerEmail: order.email,
         customerName: order.address?.name || "",
-        amountTotal: Math.round((order.total ?? 0) * 100), // convert NGN to kobo
-        paymentStatus: order.status === "paid" ? "paid" : "unpaid",
+        amountTotal: Math.round((order.total ?? 0) * 100),
+        paymentStatus: paidStatuses.has(order.status ?? "")
+          ? "paid"
+          : "unpaid",
         shippingAddress: {
           name: order.address?.name || "",
           line1: order.address?.line1 || "",
           line2: order.address?.line2 || "",
           city: order.address?.city || "",
+          state: order.address?.state || "",
           postcode: order.address?.postcode || "",
           country: order.address?.country || "",
         },
-        lineItems: order.items?.map((item: any) => ({
+        lineItems: order.items?.map((item) => ({
           name: item.product?.name || "Product",
           quantity: item.quantity,
-          amount: Math.round((item.priceAtPurchase * item.quantity) * 100),
+          amount: Math.round(
+            (item.priceAtPurchase ?? 0) * (item.quantity ?? 0) * 100,
+          ),
         })),
       },
     };
   } catch (error) {
-    console.error("Get session error:", error);
+    console.error("Get checkout session error", error);
     return { success: false, error: "Could not retrieve order details" };
   }
 }

@@ -1,5 +1,5 @@
 import { BasketIcon } from "@sanity/icons";
-import { defineArrayMember, defineField, defineType} from "sanity";
+import { defineArrayMember, defineField, defineType } from "sanity";
 import { ORDER_STATUS_SANITY_LIST } from "@/lib/constants/orderStatus";
 
 export const orderType = defineType({
@@ -111,16 +111,12 @@ export const orderType = defineType({
         defineField({ name: "line1", type: "string", title: "Address Line 1" }),
         defineField({ name: "line2", type: "string", title: "Address Line 2" }),
         defineField({ name: "city", type: "string" }),
+        defineField({ name: "state", type: "string", title: "State / Region" }),
         defineField({ name: "postcode", type: "string", title: "Postcode" }),
         defineField({ name: "country", type: "string" }),
+        defineField({ name: "email", type: "string", title: "Contact Email" }),
+        defineField({ name: "phone", type: "string", title: "Phone" }),
       ],
-    }),
-    defineField({
-      name: "stripePaymentId",
-      type: "string",
-      group: "payment",
-      readOnly: true,
-      description: "Stripe payment intent ID",
     }),
     defineField({
       name: "paymentId",
@@ -134,7 +130,7 @@ export const orderType = defineType({
       type: "string",
       group: "payment",
       readOnly: true,
-      description: "Payment gateway provider used for transaction",
+      description: "Payment gateway provider used for transaction (Paystack)",
     }),
     defineField({
       name: "shippingFee",
@@ -156,6 +152,33 @@ export const orderType = defineType({
       group: "details",
       readOnly: true,
       initialValue: () => new Date().toISOString(),
+    }),
+    defineField({
+      name: "inventoryIssue",
+      title: "Inventory Issue",
+      type: "object",
+      group: "details",
+      readOnly: true,
+      hidden: ({ document }) => document?.status !== "inventory_issue",
+      fields: [
+        defineField({ name: "reason", type: "text", rows: 3 }),
+        defineField({ name: "detectedAt", type: "datetime" }),
+        defineField({
+          name: "items",
+          type: "array",
+          of: [
+            defineArrayMember({
+              type: "object",
+              fields: [
+                defineField({ name: "productId", type: "string" }),
+                defineField({ name: "name", type: "string" }),
+                defineField({ name: "requested", type: "number" }),
+                defineField({ name: "available", type: "number" }),
+              ],
+            }),
+          ],
+        }),
+      ],
     }),
   ],
   preview: {

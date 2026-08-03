@@ -7,21 +7,12 @@ export const AFRICAN_COUNTRIES = [
   "TN", "UG", "EH", "ZM", "ZW"
 ];
 
-export type PaymentProvider = "stripe" | "paystack";
-
 /**
  * Checks if a country code belongs to an African country
  */
 export function isAfricanCountry(countryCode: string): boolean {
   if (!countryCode) return false;
   return AFRICAN_COUNTRIES.includes(countryCode.toUpperCase());
-}
-
-/**
- * Determines the payment provider based on country code
- */
-export function getPaymentProvider(countryCode: string): PaymentProvider {
-  return isAfricanCountry(countryCode) ? "paystack" : "stripe";
 }
 
 /**
@@ -58,57 +49,4 @@ export function calculateShippingFee(
 
   // 3. International Check
   return rates.shippingInternational;
-}
-
-/**
- * Calculates the gross transaction amount (including service charge)
- * to ensure we receive the target net amount.
- * 
- * Formula: Gross = (Net + Fixed) / (1 - Rate)
- * Service Charge = Gross - Net
- */
-export function calculateServiceCharge(
-  netAmount: number,
-  provider: PaymentProvider,
-  isLocalNGCard: boolean = true // Paystack local vs international
-): number {
-  if (netAmount <= 0) return 0;
-
-  let rate = 0;
-  let fixed = 0;
-  let cap = Infinity;
-
-  if (provider === "paystack") {
-    if (isLocalNGCard) {
-      // Local Paystack fee: 1.5% + ₦100 (capped at ₦2,000)
-      // Note: ₦100 flat fee is waived if total is under ₦2,500
-      rate = 0.015;
-      fixed = netAmount < 2500 ? 0 : 100;
-      cap = 2000;
-
-      // Special case: if cap is reached
-      // Gross = Net + 2000
-      // Let's check if the normal formula goes over cap.
-      const normalGross = (netAmount + fixed) / (1 - rate);
-      const normalFee = normalGross - netAmount;
-
-      if (normalFee >= cap) {
-        return cap;
-      }
-
-      return Math.ceil(normalGross - netAmount);
-    } else {
-      // International Paystack fee (non-NG African cards): 3.9% + ₦100 (no cap)
-      rate = 0.039;
-      fixed = 100;
-      const gross = (netAmount + fixed) / (1 - rate);
-      return Math.ceil(gross - netAmount);
-    }
-  } else {
-    // Stripe fee: 2.9% + ₦100 (no cap)
-    rate = 0.029;
-    fixed = 100;
-    const gross = (netAmount + fixed) / (1 - rate);
-    return Math.ceil(gross - netAmount);
-  }
 }

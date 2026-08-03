@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 
-interface AddressEditorProps extends DocumentHandle {}
+type AddressEditorProps = DocumentHandle;
 
 function AddressField({
   handle,
@@ -60,12 +60,23 @@ function AddressEditorContent(handle: AddressEditorProps) {
           <AddressField handle={handle} field="city" label="City" placeholder="London" />
         </Suspense>
         <Suspense fallback={<Skeleton className="h-16" />}>
-          <AddressField handle={handle} field="postcode" label="Postcode" placeholder="SW1A 1AA" />
+          <AddressField handle={handle} field="state" label="State / Region" placeholder="Lagos" />
         </Suspense>
       </div>
       <Suspense fallback={<Skeleton className="h-16" />}>
-        <AddressField handle={handle} field="country" label="Country" placeholder="United Kingdom" />
+        <AddressField handle={handle} field="postcode" label="Postcode" placeholder="100001" />
       </Suspense>
+      <Suspense fallback={<Skeleton className="h-16" />}>
+        <AddressField handle={handle} field="country" label="Country Code" placeholder="NG" />
+      </Suspense>
+      <div className="grid grid-cols-2 gap-3">
+        <Suspense fallback={<Skeleton className="h-16" />}>
+          <AddressField handle={handle} field="email" label="Contact Email" placeholder="customer@example.com" />
+        </Suspense>
+        <Suspense fallback={<Skeleton className="h-16" />}>
+          <AddressField handle={handle} field="phone" label="Phone" placeholder="+234..." />
+        </Suspense>
+      </div>
     </div>
   );
 }
@@ -92,4 +103,3 @@ export function AddressEditor(props: AddressEditorProps) {
     </Suspense>
   );
 }
-

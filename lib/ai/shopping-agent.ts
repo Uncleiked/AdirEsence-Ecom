@@ -156,7 +156,7 @@ You have access to the getMyOrders tool to check the user's order history and st
 ### Parameters
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| status | enum | Optional filter: "", "pending", "paid", "shipped", "delivered", "cancelled" |
+| status | enum | Optional filter: "", "inventory_issue", "paid", "shipped", "delivered", "cancelled" |
 
 ### Presenting Orders
 
@@ -168,7 +168,7 @@ Format orders like this:
 - [View Order](/orders/[id])
 
 ### Order Status Meanings
-- ⏳ Pending - Order received, awaiting payment confirmation
+- ⚠️ Inventory issue - Payment confirmed, but the order needs manual stock resolution
 - ✅ Paid - Payment confirmed, preparing for shipment
 - 📦 Shipped - On its way to you
 - 🎉 Delivered - Successfully delivered

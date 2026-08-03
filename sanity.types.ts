@@ -175,7 +175,7 @@ export type Order = {
     _key: string;
   }>;
   total?: number;
-  status?: "paid" | "shipped" | "delivered" | "cancelled";
+  status?: "inventory_issue" | "paid" | "shipped" | "delivered" | "cancelled";
   customer?: {
     _ref: string;
     _type: "reference";
@@ -189,15 +189,28 @@ export type Order = {
     line1?: string;
     line2?: string;
     city?: string;
+    state?: string;
     postcode?: string;
     country?: string;
+    email?: string;
+    phone?: string;
   };
-  stripePaymentId?: string;
   paymentId?: string;
   paymentProvider?: string;
   shippingFee?: number;
   serviceCharge?: number;
   createdAt?: string;
+  inventoryIssue?: {
+    reason?: string;
+    detectedAt?: string;
+    items?: Array<{
+      productId?: string;
+      name?: string;
+      requested?: number;
+      available?: number;
+      _key: string;
+    }>;
+  };
 };
 
 export type Product = {
@@ -252,7 +265,6 @@ export type Customer = {
   email?: string;
   name?: string;
   clerkUserId?: string;
-  stripeCustomerId?: string;
   paystackCustomerCode?: string;
   createdAt?: string;
 };
@@ -409,35 +421,22 @@ export type CATEGORY_BY_SLUG_QUERYResult = {
 
 // Source: ./lib/sanity/queries/customers.ts
 // Variable: CUSTOMER_BY_EMAIL_QUERY
-// Query: *[  _type == "customer"  && email == $email][0]{  _id,  email,  name,  clerkUserId,  stripeCustomerId,  paystackCustomerCode,  createdAt}
+// Query: *[  _type == "customer"  && email == $email][0]{  _id,  email,  name,  clerkUserId,  paystackCustomerCode,  createdAt}
 export type CUSTOMER_BY_EMAIL_QUERYResult = {
   _id: string;
   email: string | null;
   name: string | null;
   clerkUserId: string | null;
-  stripeCustomerId: string | null;
-  paystackCustomerCode: string | null;
-  createdAt: string | null;
-} | null;
-// Variable: CUSTOMER_BY_STRIPE_ID_QUERY
-// Query: *[  _type == "customer"  && stripeCustomerId == $stripeCustomerId][0]{  _id,  email,  name,  clerkUserId,  stripeCustomerId,  paystackCustomerCode,  createdAt}
-export type CUSTOMER_BY_STRIPE_ID_QUERYResult = {
-  _id: string;
-  email: string | null;
-  name: string | null;
-  clerkUserId: string | null;
-  stripeCustomerId: string | null;
   paystackCustomerCode: string | null;
   createdAt: string | null;
 } | null;
 // Variable: CUSTOMER_BY_PAYSTACK_CODE_QUERY
-// Query: *[  _type == "customer"  && paystackCustomerCode == $paystackCustomerCode][0]{  _id,  email,  name,  clerkUserId,  stripeCustomerId,  paystackCustomerCode,  createdAt}
+// Query: *[  _type == "customer"  && paystackCustomerCode == $paystackCustomerCode][0]{  _id,  email,  name,  clerkUserId,  paystackCustomerCode,  createdAt}
 export type CUSTOMER_BY_PAYSTACK_CODE_QUERYResult = {
   _id: string;
   email: string | null;
   name: string | null;
   clerkUserId: string | null;
-  stripeCustomerId: string | null;
   paystackCustomerCode: string | null;
   createdAt: string | null;
 } | null;
@@ -516,14 +515,14 @@ export type ORDERS_BY_USER_QUERYResult = Array<{
   _id: string;
   orderNumber: string | null;
   total: number | null;
-  status: "cancelled" | "delivered" | "paid" | "shipped" | null;
+  status: "cancelled" | "delivered" | "inventory_issue" | "paid" | "shipped" | null;
   createdAt: string | null;
   itemCount: number | null;
   itemNames: Array<string | null> | null;
   itemImages: Array<string | null> | null;
 }>;
 // Variable: ORDER_BY_ID_QUERY
-// Query: *[  _type == "order"  && _id == $id][0] {  _id,  orderNumber,  clerkUserId,  email,  items[]{    _key,    quantity,    priceAtPurchase,    product->{      _id,      name,      "slug": slug.current,      "image": images[0]{        asset->{          _id,          url        }      }    }  },  total,  status,  address{    name,    line1,    line2,    city,    postcode,    country  },  stripePaymentId,  paymentId,  paymentProvider,  shippingFee,  serviceCharge,  createdAt}
+// Query: *[  _type == "order"  && _id == $id][0] {  _id,  orderNumber,  clerkUserId,  email,  items[]{    _key,    quantity,    priceAtPurchase,    product->{      _id,      name,      "slug": slug.current,      "image": images[0]{        asset->{          _id,          url        }      }    }  },  total,  status,  address{    name,    line1,    line2,    city,    state,    postcode,    country,    email,    phone  },  paymentId,  paymentProvider,  shippingFee,  serviceCharge,  createdAt}
 export type ORDER_BY_ID_QUERYResult = {
   _id: string;
   orderNumber: string | null;
@@ -546,16 +545,18 @@ export type ORDER_BY_ID_QUERYResult = {
     } | null;
   }> | null;
   total: number | null;
-  status: "cancelled" | "delivered" | "paid" | "shipped" | null;
+  status: "cancelled" | "delivered" | "inventory_issue" | "paid" | "shipped" | null;
   address: {
     name: string | null;
     line1: string | null;
     line2: string | null;
     city: string | null;
+    state: string | null;
     postcode: string | null;
     country: string | null;
+    email: string | null;
+    phone: string | null;
   } | null;
-  stripePaymentId: string | null;
   paymentId: string | null;
   paymentProvider: string | null;
   shippingFee: number | null;
@@ -569,21 +570,19 @@ export type RECENT_ORDERS_QUERYResult = Array<{
   orderNumber: string | null;
   email: string | null;
   total: number | null;
-  status: "cancelled" | "delivered" | "paid" | "shipped" | null;
+  status: "cancelled" | "delivered" | "inventory_issue" | "paid" | "shipped" | null;
   createdAt: string | null;
 }>;
-// Variable: ORDER_BY_STRIPE_PAYMENT_ID_QUERY
-// Query: *[  _type == "order"  && stripePaymentId == $stripePaymentId][0]{ _id }
-export type ORDER_BY_STRIPE_PAYMENT_ID_QUERYResult = {
-  _id: string;
-} | null;
 // Variable: ORDER_BY_PAYMENT_ID_QUERY
-// Query: *[  _type == "order"  && (paymentId == $paymentId || stripePaymentId == $paymentId)][0]{ _id }
+// Query: *[  _type == "order"  && paymentId == $paymentId][0]{  _id,  orderNumber,  status,  clerkUserId}
 export type ORDER_BY_PAYMENT_ID_QUERYResult = {
   _id: string;
+  orderNumber: string | null;
+  status: "cancelled" | "delivered" | "inventory_issue" | "paid" | "shipped" | null;
+  clerkUserId: string | null;
 } | null;
 // Variable: ORDER_DETAILS_BY_PAYMENT_ID_QUERY
-// Query: *[  _type == "order"  && (paymentId == $paymentId || stripePaymentId == $paymentId)][0] {  _id,  orderNumber,  clerkUserId,  email,  items[]{    _key,    quantity,    priceAtPurchase,    product->{      _id,      name,      "slug": slug.current,      "image": images[0]{        asset->{          _id,          url        }      }    }  },  total,  status,  address{    name,    line1,    line2,    city,    postcode,    country  },  stripePaymentId,  paymentId,  paymentProvider,  shippingFee,  serviceCharge,  createdAt}
+// Query: *[  _type == "order"  && paymentId == $paymentId][0] {  _id,  orderNumber,  clerkUserId,  email,  items[]{    _key,    quantity,    priceAtPurchase,    product->{      _id,      name,      "slug": slug.current,      "image": images[0]{        asset->{          _id,          url        }      }    }  },  total,  status,  address{    name,    line1,    line2,    city,    state,    postcode,    country,    email,    phone  },  paymentId,  paymentProvider,  shippingFee,  serviceCharge,  createdAt}
 export type ORDER_DETAILS_BY_PAYMENT_ID_QUERYResult = {
   _id: string;
   orderNumber: string | null;
@@ -606,16 +605,18 @@ export type ORDER_DETAILS_BY_PAYMENT_ID_QUERYResult = {
     } | null;
   }> | null;
   total: number | null;
-  status: "cancelled" | "delivered" | "paid" | "shipped" | null;
+  status: "cancelled" | "delivered" | "inventory_issue" | "paid" | "shipped" | null;
   address: {
     name: string | null;
     line1: string | null;
     line2: string | null;
     city: string | null;
+    state: string | null;
     postcode: string | null;
     country: string | null;
+    email: string | null;
+    phone: string | null;
   } | null;
-  stripePaymentId: string | null;
   paymentId: string | null;
   paymentProvider: string | null;
   shippingFee: number | null;
@@ -928,7 +929,7 @@ export type ORDERS_LAST_7_DAYS_QUERYResult = Array<{
   _id: string;
   orderNumber: string | null;
   total: number | null;
-  status: "cancelled" | "delivered" | "paid" | "shipped" | null;
+  status: "cancelled" | "delivered" | "inventory_issue" | "paid" | "shipped" | null;
   createdAt: string | null;
   itemCount: number | null;
   items: Array<{
@@ -939,8 +940,9 @@ export type ORDERS_LAST_7_DAYS_QUERYResult = Array<{
   }> | null;
 }>;
 // Variable: ORDER_STATUS_DISTRIBUTION_QUERY
-// Query: {  "paid": count(*[_type == "order" && status == "paid" && !(_id in path("drafts.**"))]),  "shipped": count(*[_type == "order" && status == "shipped" && !(_id in path("drafts.**"))]),  "delivered": count(*[_type == "order" && status == "delivered" && !(_id in path("drafts.**"))]),  "cancelled": count(*[_type == "order" && status == "cancelled" && !(_id in path("drafts.**"))])}
+// Query: {  "inventoryIssue": count(*[_type == "order" && status == "inventory_issue" && !(_id in path("drafts.**"))]),  "paid": count(*[_type == "order" && status == "paid" && !(_id in path("drafts.**"))]),  "shipped": count(*[_type == "order" && status == "shipped" && !(_id in path("drafts.**"))]),  "delivered": count(*[_type == "order" && status == "delivered" && !(_id in path("drafts.**"))]),  "cancelled": count(*[_type == "order" && status == "cancelled" && !(_id in path("drafts.**"))])}
 export type ORDER_STATUS_DISTRIBUTION_QUERYResult = {
+  inventoryIssue: number;
   paid: number;
   shipped: number;
   delivered: number;
@@ -988,19 +990,17 @@ declare module "@sanity/client" {
   interface SanityQueries {
     "*[\n  _type == \"category\"\n] | order(title asc) {\n  _id,\n  title,\n  \"slug\": slug.current,\n  \"image\": image{\n    asset->{\n      _id,\n      url\n    },\n    hotspot\n  }\n}": ALL_CATEGORIES_QUERYResult;
     "*[\n  _type == \"category\"\n  && slug.current == $slug\n][0] {\n  _id,\n  title,\n  \"slug\": slug.current,\n  \"image\": image{\n    asset->{\n      _id,\n      url\n    },\n    hotspot\n  }\n}": CATEGORY_BY_SLUG_QUERYResult;
-    "*[\n  _type == \"customer\"\n  && email == $email\n][0]{\n  _id,\n  email,\n  name,\n  clerkUserId,\n  stripeCustomerId,\n  paystackCustomerCode,\n  createdAt\n}": CUSTOMER_BY_EMAIL_QUERYResult;
-    "*[\n  _type == \"customer\"\n  && stripeCustomerId == $stripeCustomerId\n][0]{\n  _id,\n  email,\n  name,\n  clerkUserId,\n  stripeCustomerId,\n  paystackCustomerCode,\n  createdAt\n}": CUSTOMER_BY_STRIPE_ID_QUERYResult;
-    "*[\n  _type == \"customer\"\n  && paystackCustomerCode == $paystackCustomerCode\n][0]{\n  _id,\n  email,\n  name,\n  clerkUserId,\n  stripeCustomerId,\n  paystackCustomerCode,\n  createdAt\n}": CUSTOMER_BY_PAYSTACK_CODE_QUERYResult;
+    "*[\n  _type == \"customer\"\n  && email == $email\n][0]{\n  _id,\n  email,\n  name,\n  clerkUserId,\n  paystackCustomerCode,\n  createdAt\n}": CUSTOMER_BY_EMAIL_QUERYResult;
+    "*[\n  _type == \"customer\"\n  && paystackCustomerCode == $paystackCustomerCode\n][0]{\n  _id,\n  email,\n  name,\n  clerkUserId,\n  paystackCustomerCode,\n  createdAt\n}": CUSTOMER_BY_PAYSTACK_CODE_QUERYResult;
     "\n  *[_type == \"hero\"] | order(_updatedAt desc)[0] {\n    beatA,\n    beatB,\n    beatC,\n    beatD,\n    animationSequence->{\n      title,\n      \"images\": images[].asset->url\n    }\n  }\n": HERO_QUERYResult;
     "\n  *[_type == \"about\"] | order(_updatedAt desc)[0] {\n    title,\n    description,\n    assetType,\n    \"image\": image.asset->url,\n    \"video\": video.asset->url,\n    videoUrl\n  }\n": ABOUT_QUERYResult;
     "\n  *[_type == \"feature\"] | order(order asc) {\n    title,\n    description,\n    icon\n  }\n": FEATURES_QUERYResult;
     "\n  *[_type == \"siteSettings\"] | order(_updatedAt desc)[0] {\n    siteName,\n    headerCtaText,\n    headerCtaLink,\n    socialLinks {\n      facebook,\n      instagram,\n      x,\n      pinterest,\n      youtube,\n      tiktok\n    },\n    footerLinks[] {\n      title,\n      url\n    },\n    shippingLagos,\n    shippingRestOfNigeria,\n    shippingAfrica,\n    shippingInternational\n  }\n": SITE_SETTINGS_QUERYResult;
     "*[\n  _type == \"order\"\n  && clerkUserId == $clerkUserId\n] | order(createdAt desc) {\n  _id,\n  orderNumber,\n  total,\n  status,\n  createdAt,\n  \"itemCount\": count(items),\n  \"itemNames\": items[].product->name,\n  \"itemImages\": items[].product->images[0].asset->url\n}": ORDERS_BY_USER_QUERYResult;
-    "*[\n  _type == \"order\"\n  && _id == $id\n][0] {\n  _id,\n  orderNumber,\n  clerkUserId,\n  email,\n  items[]{\n    _key,\n    quantity,\n    priceAtPurchase,\n    product->{\n      _id,\n      name,\n      \"slug\": slug.current,\n      \"image\": images[0]{\n        asset->{\n          _id,\n          url\n        }\n      }\n    }\n  },\n  total,\n  status,\n  address{\n    name,\n    line1,\n    line2,\n    city,\n    postcode,\n    country\n  },\n  stripePaymentId,\n  paymentId,\n  paymentProvider,\n  shippingFee,\n  serviceCharge,\n  createdAt\n}": ORDER_BY_ID_QUERYResult;
+    "*[\n  _type == \"order\"\n  && _id == $id\n][0] {\n  _id,\n  orderNumber,\n  clerkUserId,\n  email,\n  items[]{\n    _key,\n    quantity,\n    priceAtPurchase,\n    product->{\n      _id,\n      name,\n      \"slug\": slug.current,\n      \"image\": images[0]{\n        asset->{\n          _id,\n          url\n        }\n      }\n    }\n  },\n  total,\n  status,\n  address{\n    name,\n    line1,\n    line2,\n    city,\n    state,\n    postcode,\n    country,\n    email,\n    phone\n  },\n  paymentId,\n  paymentProvider,\n  shippingFee,\n  serviceCharge,\n  createdAt\n}": ORDER_BY_ID_QUERYResult;
     "*[\n  _type == \"order\"\n] | order(createdAt desc) [0...$limit] {\n  _id,\n  orderNumber,\n  email,\n  total,\n  status,\n  createdAt\n}": RECENT_ORDERS_QUERYResult;
-    "*[\n  _type == \"order\"\n  && stripePaymentId == $stripePaymentId\n][0]{ _id }": ORDER_BY_STRIPE_PAYMENT_ID_QUERYResult;
-    "*[\n  _type == \"order\"\n  && (paymentId == $paymentId || stripePaymentId == $paymentId)\n][0]{ _id }": ORDER_BY_PAYMENT_ID_QUERYResult;
-    "*[\n  _type == \"order\"\n  && (paymentId == $paymentId || stripePaymentId == $paymentId)\n][0] {\n  _id,\n  orderNumber,\n  clerkUserId,\n  email,\n  items[]{\n    _key,\n    quantity,\n    priceAtPurchase,\n    product->{\n      _id,\n      name,\n      \"slug\": slug.current,\n      \"image\": images[0]{\n        asset->{\n          _id,\n          url\n        }\n      }\n    }\n  },\n  total,\n  status,\n  address{\n    name,\n    line1,\n    line2,\n    city,\n    postcode,\n    country\n  },\n  stripePaymentId,\n  paymentId,\n  paymentProvider,\n  shippingFee,\n  serviceCharge,\n  createdAt\n}": ORDER_DETAILS_BY_PAYMENT_ID_QUERYResult;
+    "*[\n  _type == \"order\"\n  && paymentId == $paymentId\n][0]{\n  _id,\n  orderNumber,\n  status,\n  clerkUserId\n}": ORDER_BY_PAYMENT_ID_QUERYResult;
+    "*[\n  _type == \"order\"\n  && paymentId == $paymentId\n][0] {\n  _id,\n  orderNumber,\n  clerkUserId,\n  email,\n  items[]{\n    _key,\n    quantity,\n    priceAtPurchase,\n    product->{\n      _id,\n      name,\n      \"slug\": slug.current,\n      \"image\": images[0]{\n        asset->{\n          _id,\n          url\n        }\n      }\n    }\n  },\n  total,\n  status,\n  address{\n    name,\n    line1,\n    line2,\n    city,\n    state,\n    postcode,\n    country,\n    email,\n    phone\n  },\n  paymentId,\n  paymentProvider,\n  shippingFee,\n  serviceCharge,\n  createdAt\n}": ORDER_DETAILS_BY_PAYMENT_ID_QUERYResult;
     "*[\n  _type == \"product\"\n] | order(name asc) {\n  _id,\n  name,\n  \"slug\": slug.current,\n  description,\n  price,\n  \"images\": images[]{\n    _key,\n    asset->{\n      _id,\n      url\n    },\n    hotspot\n  },\n  category->{\n    _id,\n    title,\n    \"slug\": slug.current\n  },\n  material,\n  color,\n  dimensions,\n  stock,\n  featured,\n  assemblyRequired\n}": ALL_PRODUCTS_QUERYResult;
     "*[\n  _type == \"product\"\n  && featured == true\n  && stock > 0\n] | order(name asc) [0...6] {\n  _id,\n  name,\n  \"slug\": slug.current,\n  description,\n  price,\n  \"images\": images[]{\n    _key,\n    asset->{\n      _id,\n      url\n    },\n    hotspot\n  },\n  category->{\n    _id,\n    title,\n    \"slug\": slug.current\n  },\n  stock\n}": FEATURED_PRODUCTS_QUERYResult;
     "*[\n  _type == \"product\"\n  && category->slug.current == $categorySlug\n] | order(name asc) {\n  _id,\n  name,\n  \"slug\": slug.current,\n  price,\n  \"image\": images[0]{\n    asset->{\n      _id,\n      url\n    },\n    hotspot\n  },\n  category->{\n    _id,\n    title,\n    \"slug\": slug.current\n  },\n  material,\n  color,\n  stock\n}": PRODUCTS_BY_CATEGORY_QUERYResult;
@@ -1018,7 +1018,7 @@ declare module "@sanity/client" {
     "count(*[_type == \"order\"])": ORDER_COUNT_QUERYResult;
     "math::sum(*[\n  _type == \"order\"\n  && status in [\"paid\", \"shipped\", \"delivered\"]\n].total)": TOTAL_REVENUE_QUERYResult;
     "*[\n  _type == \"order\"\n  && createdAt >= $startDate\n  && !(_id in path(\"drafts.**\"))\n] | order(createdAt desc) {\n  _id,\n  orderNumber,\n  total,\n  status,\n  createdAt,\n  \"itemCount\": count(items),\n  items[]{\n    quantity,\n    priceAtPurchase,\n    \"productName\": product->name,\n    \"productId\": product->_id\n  }\n}": ORDERS_LAST_7_DAYS_QUERYResult;
-    "{\n  \"paid\": count(*[_type == \"order\" && status == \"paid\" && !(_id in path(\"drafts.**\"))]),\n  \"shipped\": count(*[_type == \"order\" && status == \"shipped\" && !(_id in path(\"drafts.**\"))]),\n  \"delivered\": count(*[_type == \"order\" && status == \"delivered\" && !(_id in path(\"drafts.**\"))]),\n  \"cancelled\": count(*[_type == \"order\" && status == \"cancelled\" && !(_id in path(\"drafts.**\"))])\n}": ORDER_STATUS_DISTRIBUTION_QUERYResult;
+    "{\n  \"inventoryIssue\": count(*[_type == \"order\" && status == \"inventory_issue\" && !(_id in path(\"drafts.**\"))]),\n  \"paid\": count(*[_type == \"order\" && status == \"paid\" && !(_id in path(\"drafts.**\"))]),\n  \"shipped\": count(*[_type == \"order\" && status == \"shipped\" && !(_id in path(\"drafts.**\"))]),\n  \"delivered\": count(*[_type == \"order\" && status == \"delivered\" && !(_id in path(\"drafts.**\"))]),\n  \"cancelled\": count(*[_type == \"order\" && status == \"cancelled\" && !(_id in path(\"drafts.**\"))])\n}": ORDER_STATUS_DISTRIBUTION_QUERYResult;
     "*[\n  _type == \"order\"\n  && status in [\"paid\", \"shipped\", \"delivered\"]\n  && !(_id in path(\"drafts.**\"))\n] {\n  items[]{\n    \"productId\": product->_id,\n    \"productName\": product->name,\n    \"productPrice\": product->price,\n    quantity\n  }\n}.items[]": TOP_SELLING_PRODUCTS_QUERYResult;
     "*[_type == \"product\"] {\n  _id,\n  name,\n  price,\n  stock,\n  \"category\": category->title\n}": PRODUCTS_INVENTORY_QUERYResult;
     "*[\n  _type == \"order\"\n  && status == \"paid\"\n  && !(_id in path(\"drafts.**\"))\n] | order(createdAt asc) {\n  _id,\n  orderNumber,\n  total,\n  createdAt,\n  email,\n  \"itemCount\": count(items)\n}": UNFULFILLED_ORDERS_QUERYResult;

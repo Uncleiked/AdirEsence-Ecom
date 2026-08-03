@@ -53,10 +53,12 @@ export const ORDER_BY_ID_QUERY = defineQuery(`*[
     line1,
     line2,
     city,
+    state,
     postcode,
-    country
+    country,
+    email,
+    phone
   },
-  stripePaymentId,
   paymentId,
   paymentProvider,
   shippingFee,
@@ -79,29 +81,25 @@ export const RECENT_ORDERS_QUERY = defineQuery(`*[
 }`);
 
 /**
- * Check if order exists by Stripe payment ID
- * Used for webhook idempotency check
- */
-export const ORDER_BY_STRIPE_PAYMENT_ID_QUERY = defineQuery(`*[
-  _type == "order"
-  && stripePaymentId == $stripePaymentId
-][0]{ _id }`);
-
-/**
- * Check if order exists by generic payment ID (works for both Stripe and Paystack)
+ * Check if an order exists by Paystack payment reference.
  * Used for webhook idempotency check
  */
 export const ORDER_BY_PAYMENT_ID_QUERY = defineQuery(`*[
   _type == "order"
-  && (paymentId == $paymentId || stripePaymentId == $paymentId)
-][0]{ _id }`);
+  && paymentId == $paymentId
+][0]{
+  _id,
+  orderNumber,
+  status,
+  clerkUserId
+}`);
 
 /**
- * Get full order details by payment ID (Stripe or Paystack)
+ * Get full order details by Paystack payment reference.
  */
 export const ORDER_DETAILS_BY_PAYMENT_ID_QUERY = defineQuery(`*[
   _type == "order"
-  && (paymentId == $paymentId || stripePaymentId == $paymentId)
+  && paymentId == $paymentId
 ][0] {
   _id,
   orderNumber,
@@ -130,14 +128,15 @@ export const ORDER_DETAILS_BY_PAYMENT_ID_QUERY = defineQuery(`*[
     line1,
     line2,
     city,
+    state,
     postcode,
-    country
+    country,
+    email,
+    phone
   },
-  stripePaymentId,
   paymentId,
   paymentProvider,
   shippingFee,
   serviceCharge,
   createdAt
 }`);
-
