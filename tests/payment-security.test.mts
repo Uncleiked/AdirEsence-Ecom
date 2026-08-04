@@ -7,6 +7,8 @@ import {
 } from "../lib/payments/order-fulfillment.ts";
 import { takeRateLimit } from "../lib/security/rate-limit.ts";
 import { paystackReturnedMetadataSchema } from "../lib/payments/paystack-validation.ts";
+import { resolveCheckoutBaseUrl } from "../lib/payments/app-url.ts";
+import { getPaystackOrderIdentity } from "../lib/payments/paystack-reference.ts";
 
 const validItem = {
   productId: "product-1",
@@ -114,6 +116,39 @@ test("Paystack-returned string metadata is safely normalized", () => {
     assert.equal(result.data.shippingFee, 50);
     assert.equal(result.data.expectedAmountKobo, 6_805_000);
   }
+});
+
+test("checkout returns to the initiating custom domain instead of a Vercel preview", () => {
+  assert.equal(
+    resolveCheckoutBaseUrl({
+      requestOrigin: "https://www.adiressence.store",
+      forwardedHost: "adiressence-preview.vercel.app",
+      forwardedProto: "https",
+      vercelUrl: "adiressence-preview.vercel.app",
+    }),
+    "https://www.adiressence.store",
+  );
+});
+
+test("an explicitly configured checkout URL remains canonical", () => {
+  assert.equal(
+    resolveCheckoutBaseUrl({
+      configuredUrl: "https://www.adiressence.store/shop/checkout",
+      requestOrigin: "https://adiressence-preview.vercel.app",
+      vercelUrl: "adiressence-preview.vercel.app",
+    }),
+    "https://www.adiressence.store",
+  );
+});
+
+test("Paystack references map to stable Sanity order identities", () => {
+  const first = getPaystackOrderIdentity("PAY-TEST-123");
+  const second = getPaystackOrderIdentity("PAY-TEST-123");
+
+  assert.deepEqual(first, second);
+  assert.match(first.orderId, /^order\.paystack\.[a-f0-9]{64}$/);
+  assert.match(first.orderNumber, /^ORD-[A-F0-9]{12}$/);
+  assert.throws(() => getPaystackOrderIdentity("invalid/reference"));
 });
 
 test("rate limiter blocks calls over the configured window limit", () => {

@@ -4,8 +4,7 @@ import Image from "next/image";
 import { auth } from "@clerk/nextjs/server";
 import { ArrowLeft, CreditCard, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { sanityFetch } from "@/sanity/lib/live";
-import { ORDER_BY_ID_QUERY } from "@/lib/sanity/queries/orders";
+import { getCustomerOrderById } from "@/lib/orders/customer-orders";
 import { getOrderStatus } from "@/lib/constants/orderStatus";
 import { formatPrice, formatDate } from "@/lib/utils";
 
@@ -14,6 +13,9 @@ export const metadata = {
   description: "View your order details",
 };
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 interface OrderPageProps {
   params: Promise<{ id: string }>;
 }
@@ -21,14 +23,9 @@ interface OrderPageProps {
 export default async function OrderDetailPage({ params }: OrderPageProps) {
   const { id } = await params;
   const { userId } = await auth();
+  const order = await getCustomerOrderById(id, userId ?? "");
 
-  const { data: order } = await sanityFetch({
-    query: ORDER_BY_ID_QUERY,
-    params: { id },
-  });
-
-  // Verify order exists and belongs to current user
-  if (!order || order.clerkUserId !== userId) {
+  if (!order) {
     notFound();
   }
 
@@ -72,7 +69,7 @@ export default async function OrderDetailPage({ params }: OrderPageProps) {
               </h2>
             </div>
             <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
-              {order.items?.map((item: any) => (
+              {order.items?.map((item) => (
                 <div key={item._key} className="flex gap-4 px-6 py-4">
                   {/* Image */}
                   <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-md bg-zinc-100 dark:bg-zinc-800">

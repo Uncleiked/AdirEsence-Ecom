@@ -1,10 +1,9 @@
 import "server-only";
 
-import { createHash } from "node:crypto";
 import { z } from "zod";
 import { writeClient } from "@/sanity/lib/client";
-import { ORDER_BY_PAYMENT_ID_QUERY } from "@/lib/sanity/queries/orders";
 import { paystackReturnedMetadataSchema } from "@/lib/payments/paystack-validation";
+import { getPaystackOrderIdentity } from "@/lib/payments/paystack-reference";
 import {
   calculateRemainingStock,
   findInventoryShortages,
@@ -54,14 +53,23 @@ interface ExistingOrder {
   _id: string;
   orderNumber?: string | null;
   status?: string | null;
+  paymentId?: string | null;
 }
 
 async function findExistingOrder(
+  orderId: string,
   reference: string,
 ): Promise<ExistingOrder | null> {
-  return writeClient.fetch<ExistingOrder | null>(ORDER_BY_PAYMENT_ID_QUERY, {
-    paymentId: reference,
-  });
+  const order = await writeClient.getDocument<ExistingOrder>(orderId);
+  if (!order) return null;
+
+  if (order.paymentId !== reference) {
+    throw new Error(
+      "Paystack order identity does not match its payment reference",
+    );
+  }
+
+  return order;
 }
 
 /**
@@ -73,12 +81,11 @@ export async function fulfillPaidOrder(
   data: PaystackSuccessfulTransaction,
 ): Promise<FulfilledOrder> {
   const { reference, metadata } = data;
-  const referenceHash = createHash("sha256").update(reference).digest("hex");
-  const orderId = `order.paystack.${referenceHash}`;
-  const orderNumber = `ORD-${referenceHash.slice(0, 12).toUpperCase()}`;
+  const { orderId, orderNumber, referenceHash } =
+    getPaystackOrderIdentity(reference);
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    const existingOrder = await findExistingOrder(reference);
+    const existingOrder = await findExistingOrder(orderId, reference);
     if (existingOrder) {
       return {
         orderId: existingOrder._id,
@@ -171,12 +178,13 @@ export async function fulfillPaidOrder(
     }
 
     try {
-      await transaction.commit();
+      await transaction.commit({ visibility: "sync" });
       return { orderId, orderNumber, status };
     } catch (error) {
       // A simultaneous webhook/callback may have completed the deterministic
-      // order first. A product revision conflict should retry with fresh stock.
-      const completedOrder = await findExistingOrder(reference);
+      // order first. Use a direct document lookup so the check does not depend
+      // on the eventually consistent GROQ search index.
+      const completedOrder = await findExistingOrder(orderId, reference);
       if (completedOrder) {
         return {
           orderId: completedOrder._id,

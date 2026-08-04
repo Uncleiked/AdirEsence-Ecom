@@ -2,12 +2,21 @@
 
 import { createHash } from "node:crypto";
 import { auth, currentUser } from "@clerk/nextjs/server";
+import { headers } from "next/headers";
 import { client, writeClient } from "@/sanity/lib/client";
 import { PRODUCTS_BY_IDS_QUERY } from "@/lib/sanity/queries/products";
 import { CUSTOMER_BY_EMAIL_QUERY } from "@/lib/sanity/queries/customers";
-import { ORDER_DETAILS_BY_PAYMENT_ID_QUERY } from "@/lib/sanity/queries/orders";
 import { calculateShippingFee } from "@/lib/constants/payment";
-import { initializePaystackTransaction } from "@/lib/payments/paystack";
+import { resolveCheckoutBaseUrl } from "@/lib/payments/app-url";
+import {
+  initializePaystackTransaction,
+  verifyPaystackTransaction,
+} from "@/lib/payments/paystack";
+import {
+  fulfillPaidOrder,
+  paystackSuccessfulTransactionSchema,
+} from "@/lib/payments/paystack-order";
+import { getPaystackOrderIdentity } from "@/lib/payments/paystack-reference";
 import {
   checkoutRequestSchema,
   type CheckoutAddress,
@@ -28,6 +37,33 @@ interface CheckoutProduct {
   stock?: number | null;
 }
 
+interface StoredOrder {
+  orderNumber?: string | null;
+  clerkUserId?: string | null;
+  email?: string | null;
+  items?: Array<{
+    quantity?: number | null;
+    priceAtPurchase?: number | null;
+    product?: { _ref?: string | null } | null;
+  }> | null;
+  total?: number | null;
+  status?: string | null;
+  paymentId?: string | null;
+  address?: {
+    name?: string | null;
+    line1?: string | null;
+    line2?: string | null;
+    city?: string | null;
+    state?: string | null;
+    postcode?: string | null;
+    country?: string | null;
+  } | null;
+}
+
+interface StoredProduct {
+  name?: string | null;
+}
+
 const SHIPPING_RATES_QUERY = `*[_type == "siteSettings"] | order(_updatedAt desc)[0] {
   shippingLagos,
   shippingRestOfNigeria,
@@ -42,13 +78,17 @@ const DEFAULT_SHIPPING_RATES = {
   shippingInternational: 50_000,
 };
 
-function getBaseUrl(): string {
-  const configuredUrl =
-    process.env.NEXT_PUBLIC_BASE_URL ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
-    "http://localhost:3000";
+async function getBaseUrl(): Promise<string> {
+  const requestHeaders = await headers();
 
-  return new URL(configuredUrl).origin;
+  return resolveCheckoutBaseUrl({
+    configuredUrl: process.env.NEXT_PUBLIC_BASE_URL,
+    requestOrigin: requestHeaders.get("origin"),
+    forwardedHost:
+      requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host"),
+    forwardedProto: requestHeaders.get("x-forwarded-proto"),
+    vercelUrl: process.env.VERCEL_URL,
+  });
 }
 
 async function getOrCreateCustomer(
@@ -225,7 +265,7 @@ export async function createCheckoutSession(
       email: userEmail,
       amountKobo,
       metadata,
-      baseUrl: getBaseUrl(),
+      baseUrl: await getBaseUrl(),
     });
 
     return { success: true, url: transaction.authorizationUrl };
@@ -254,13 +294,49 @@ export async function getCheckoutSession(sessionId: string) {
       return { success: false, error: "Order not found" };
     }
 
-    const order = await client.fetch(ORDER_DETAILS_BY_PAYMENT_ID_QUERY, {
-      paymentId: sessionId,
-    });
+    const { orderId } = getPaystackOrderIdentity(sessionId);
+    let order = await writeClient.getDocument<StoredOrder>(orderId);
 
-    if (!order || order.clerkUserId !== userId) {
+    // The webhook and browser callback can arrive in either order. If the
+    // order is not present yet, securely re-verify the charge and complete the
+    // same idempotent fulfillment path before rendering the confirmation.
+    if (!order) {
+      const verification = await verifyPaystackTransaction(sessionId);
+      const verifiedTransaction = paystackSuccessfulTransactionSchema.safeParse(
+        verification,
+      );
+
+      if (
+        !verifiedTransaction.success ||
+        verifiedTransaction.data.metadata.clerkUserId !== userId
+      ) {
+        return { success: false, error: "Order not found" };
+      }
+
+      await fulfillPaidOrder(verifiedTransaction.data);
+      order = await writeClient.getDocument<StoredOrder>(orderId);
+    }
+
+    if (
+      !order ||
+      order.paymentId !== sessionId ||
+      order.clerkUserId !== userId
+    ) {
       return { success: false, error: "Order not found" };
     }
+
+    const productIds = (order.items ?? [])
+      .map((item) => item.product?._ref)
+      .filter((productId): productId is string => Boolean(productId));
+    const products = productIds.length
+      ? await writeClient.getDocuments<StoredProduct>(productIds)
+      : [];
+    const productNames = new Map(
+      productIds.map((productId, index) => [
+        productId,
+        products[index]?.name ?? "Product",
+      ]),
+    );
 
     const paidStatuses = new Set([
       "paid",
@@ -291,7 +367,9 @@ export async function getCheckoutSession(sessionId: string) {
           country: order.address?.country || "",
         },
         lineItems: order.items?.map((item) => ({
-          name: item.product?.name || "Product",
+          name:
+            (item.product?._ref && productNames.get(item.product._ref)) ||
+            "Product",
           quantity: item.quantity,
           amount: Math.round(
             (item.priceAtPurchase ?? 0) * (item.quantity ?? 0) * 100,

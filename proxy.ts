@@ -6,7 +6,6 @@ const isProtectedRoute = createRouteMatcher([
   "/shop/orders(.*)",
   "/shop/success(.*)",
   "/shop/declined(.*)",
-  "/api/paystack/callback(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

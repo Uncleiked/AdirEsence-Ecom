@@ -1,7 +1,6 @@
 import { tool } from "ai";
 import { z } from "zod";
-import { sanityFetch } from "@/sanity/lib/live";
-import { ORDERS_BY_USER_QUERY } from "@/lib/sanity/queries/orders";
+import { getCustomerOrders } from "@/lib/orders/customer-orders";
 import {
   ORDER_STATUS_VALUES,
   getOrderStatusEmoji,
@@ -61,10 +60,7 @@ export function createGetMyOrdersTool(userId: string | null) {
       });
 
       try {
-        const { data: orders } = await sanityFetch({
-          query: ORDERS_BY_USER_QUERY,
-          params: { clerkUserId: userId },
-        });
+        const orders = await getCustomerOrders(userId);
 
         console.log("[GetMyOrders] Orders found:", orders.length);
 

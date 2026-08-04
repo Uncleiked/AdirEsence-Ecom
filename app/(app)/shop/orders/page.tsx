@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
-import { Package, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { sanityFetch } from "@/sanity/lib/live";
-import { ORDERS_BY_USER_QUERY } from "@/lib/sanity/queries/orders";
+import { getCustomerOrders } from "@/lib/orders/customer-orders";
 import { getOrderStatus } from "@/lib/constants/orderStatus";
 import { formatPrice, formatDate, formatOrderNumber } from "@/lib/utils";
 import { StackedProductImages } from "@/components/app/StackedProductImages";
@@ -14,24 +13,32 @@ export const metadata = {
   description: "View your order history",
 };
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function OrdersPage() {
   const { userId } = await auth();
-
-  const { data: orders } = await sanityFetch({
-    query: ORDERS_BY_USER_QUERY,
-    params: { clerkUserId: userId ?? "" },
-  });
+  const orders = await getCustomerOrders(userId ?? "");
 
   if (orders.length === 0) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6 lg:px-8">
-        <EmptyState
-          icon={Package}
-          title="No orders yet"
-          description="When you place an order, it will appear here."
-          action={{ label: "Start Shopping", href: "/" }}
-          size="lg"
-        />
+        <Link
+          href="/shop"
+          className="inline-flex items-center text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Shop
+        </Link>
+        <div className="mt-8">
+          <EmptyState
+            icon={Package}
+            title="No orders yet"
+            description="When you place an order, it will appear here."
+            action={{ label: "Start Shopping", href: "/shop" }}
+            size="lg"
+          />
+        </div>
       </div>
     );
   }
@@ -39,7 +46,14 @@ export default async function OrdersPage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">
+        <Link
+          href="/shop"
+          className="inline-flex items-center text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Shop
+        </Link>
+        <h1 className="mt-4 text-3xl font-bold text-zinc-900 dark:text-zinc-100">
           Your Orders
         </h1>
         <p className="mt-2 text-zinc-500 dark:text-zinc-400">
