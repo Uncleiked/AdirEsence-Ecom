@@ -14,6 +14,7 @@ import {
 import { Providers } from "@/components/providers/Providers";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { UserButton } from "@clerk/nextjs";
 
 const navItems = [
   {
@@ -133,6 +134,13 @@ function AdminLayout({ children }: { children: React.ReactNode }) {
 
             {/* Footer */}
             <div className="space-y-3 border-t border-zinc-200 px-3 py-4 dark:border-zinc-800">
+              <div className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-zinc-600 dark:text-zinc-400">
+                <span>Signed-in account</span>
+                <UserButton
+                  afterSwitchSessionUrl="/"
+                  appearance={{ elements: { avatarBox: "h-8 w-8" } }}
+                />
+              </div>
               <Link
                 href="/studio"
                 target="_blank"

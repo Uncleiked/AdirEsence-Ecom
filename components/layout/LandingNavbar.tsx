@@ -2,9 +2,21 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ShoppingBagIcon, MenuIcon, XIcon } from "lucide-react";
+import {
+  MenuIcon,
+  PackageIcon,
+  ShoppingBagIcon,
+  UserIcon,
+  XIcon,
+} from "lucide-react";
+import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs";
+import type { SITE_SETTINGS_QUERYResult } from "@/sanity.types";
 
-export function LandingNavbar({ settings }: { settings: any }) {
+export function LandingNavbar({
+  settings,
+}: {
+  settings: SITE_SETTINGS_QUERYResult;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const siteName = settings?.siteName || "AdirEssence";
 
@@ -44,7 +56,31 @@ export function LandingNavbar({ settings }: { settings: any }) {
               ))}
             </div>
 
-            <div className="hidden md:flex items-center">
+            <div className="hidden md:flex items-center gap-3">
+              <SignedIn>
+                <Link
+                  href="/shop/orders"
+                  className="text-fill-hover flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium text-zinc-600 transition-colors dark:text-zinc-400"
+                >
+                  <PackageIcon className="h-4 w-4" />
+                  My Orders
+                </Link>
+                <UserButton
+                  afterSwitchSessionUrl="/"
+                  appearance={{ elements: { avatarBox: "h-9 w-9" } }}
+                />
+              </SignedIn>
+              <SignedOut>
+                <SignInButton mode="modal">
+                  <button
+                    type="button"
+                    className="text-fill-hover flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium text-zinc-600 transition-colors dark:text-zinc-400"
+                  >
+                    <UserIcon className="h-4 w-4" />
+                    Sign in
+                  </button>
+                </SignInButton>
+              </SignedOut>
               <Link
                 href={settings?.headerCtaLink || "/shop"}
                 className="water-hover flex items-center space-x-2 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-black px-4 py-2 rounded-full text-sm font-semibold transition-all duration-300"
@@ -55,8 +91,26 @@ export function LandingNavbar({ settings }: { settings: any }) {
             </div>
 
             {/* Mobile menu button */}
-            <div className="flex items-center md:hidden">
+            <div className="flex items-center gap-1 md:hidden">
+              <SignedIn>
+                <UserButton
+                  afterSwitchSessionUrl="/"
+                  appearance={{ elements: { avatarBox: "h-9 w-9" } }}
+                />
+              </SignedIn>
+              <SignedOut>
+                <SignInButton mode="modal">
+                  <button
+                    type="button"
+                    className="rounded-md p-2 text-zinc-600 dark:text-zinc-400"
+                    aria-label="Sign in"
+                  >
+                    <UserIcon className="h-6 w-6" />
+                  </button>
+                </SignInButton>
+              </SignedOut>
               <button
+                type="button"
                 onClick={() => setIsOpen(!isOpen)}
                 className="text-zinc-600 dark:text-zinc-400 p-2 rounded-md focus:outline-none"
                 aria-label="Toggle navigation"
@@ -78,6 +132,7 @@ export function LandingNavbar({ settings }: { settings: any }) {
       >
         {/* Close button pinned top-right */}
         <button
+          type="button"
           onClick={() => setIsOpen(false)}
           className="absolute top-5 right-5 p-2 text-zinc-600 dark:text-zinc-400 rounded-md z-10"
           aria-label="Close navigation"

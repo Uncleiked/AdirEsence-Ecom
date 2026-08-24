@@ -1,13 +1,23 @@
 import Link from "next/link";
 import { FacebookIcon, InstagramIcon, TwitterIcon, YoutubeIcon, PinIcon } from "lucide-react";
+import type { SITE_SETTINGS_QUERYResult } from "@/sanity.types";
 
-export function LandingFooter({ settings }: { settings: any }) {
+const defaultFooterLinks = [
+  { title: "Terms & Conditions", url: "/terms" },
+  { title: "Privacy Policy", url: "/privacy" },
+];
+
+export function LandingFooter({
+  settings,
+}: {
+  settings: SITE_SETTINGS_QUERYResult;
+}) {
   const siteName = settings?.siteName || "AdirEssence";
-  const links = settings?.footerLinks || [
-    { title: "Terms & Conditions", url: "/terms" },
-    { title: "Privacy Policy", url: "/privacy" },
-  ];
-  const social = settings?.socialLinks || {};
+  const links =
+    settings?.footerLinks?.flatMap((link) =>
+      link.title && link.url ? [{ title: link.title, url: link.url }] : [],
+    ) || defaultFooterLinks;
+  const social = settings?.socialLinks;
 
   return (
     <footer className="bg-zinc-50 border-t border-zinc-200 dark:bg-zinc-950 dark:border-zinc-800 pt-16 pb-8">
@@ -61,6 +71,7 @@ export function LandingFooter({ settings }: { settings: any }) {
                 <li key={link.title}>
                   <Link
                     href={link.url}
+                    prefetch={link.url === "/admin" ? false : undefined}
                     data-text={link.title}
                     className="text-fill-hover text-sm text-zinc-600 dark:text-zinc-400 px-2 py-0.5 rounded transition-colors"
                   >
@@ -75,8 +86,8 @@ export function LandingFooter({ settings }: { settings: any }) {
           <div className="md:col-span-1">
             <h3 className="font-semibold text-zinc-900 dark:text-zinc-100 mb-4">Legal</h3>
             <ul className="space-y-3">
-              {links.map((link: any, idx: number) => (
-                <li key={idx}>
+              {links.map((link) => (
+                <li key={`${link.title}-${link.url}`}>
                   <Link
                     href={link.url}
                     data-text={link.title}
@@ -96,31 +107,31 @@ export function LandingFooter({ settings }: { settings: any }) {
             © {new Date().getFullYear()} {siteName}. All rights reserved.
           </p>
           <div className="flex space-x-5">
-            {social.instagram && (
+            {social?.instagram && (
               <a href={social.instagram} target="_blank" rel="noopener noreferrer"
                 className="water-hover p-1.5 rounded-full text-zinc-500 transition-colors">
                 <InstagramIcon className="w-5 h-5" />
               </a>
             )}
-            {social.facebook && (
+            {social?.facebook && (
               <a href={social.facebook} target="_blank" rel="noopener noreferrer"
                 className="water-hover p-1.5 rounded-full text-zinc-500 transition-colors">
                 <FacebookIcon className="w-5 h-5" />
               </a>
             )}
-            {social.x && (
+            {social?.x && (
               <a href={social.x} target="_blank" rel="noopener noreferrer"
                 className="water-hover p-1.5 rounded-full text-zinc-500 transition-colors">
                 <TwitterIcon className="w-5 h-5" />
               </a>
             )}
-            {social.youtube && (
+            {social?.youtube && (
               <a href={social.youtube} target="_blank" rel="noopener noreferrer"
                 className="water-hover p-1.5 rounded-full text-zinc-500 transition-colors">
                 <YoutubeIcon className="w-5 h-5" />
               </a>
             )}
-            {social.pinterest && (
+            {social?.pinterest && (
               <a href={social.pinterest} target="_blank" rel="noopener noreferrer"
                 className="water-hover p-1.5 rounded-full text-zinc-500 transition-colors">
                 <PinIcon className="w-5 h-5" />
