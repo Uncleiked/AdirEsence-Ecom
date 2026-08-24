@@ -16,6 +16,20 @@ const paystackOrderItemSchema = z
       z.number().finite().int().positive().max(100),
     ),
     unitPrice: paystackNumericValue.pipe(z.number().finite().nonnegative()),
+    sizing: z
+      .object({
+        version: paystackNumericValue.pipe(z.literal(1)),
+        mode: z.enum(["trouser", "shorts", "skirt"]),
+        fitProfile: z.enum(["men", "women", "unisex"]),
+        unit: z.enum(["in", "cm"]),
+        waist: paystackNumericValue.pipe(z.number().finite().positive()),
+        hip: paystackNumericValue.pipe(z.number().finite().positive()),
+        length: paystackNumericValue.pipe(z.number().finite().positive()),
+        lengthType: z.enum(["insideLeg", "shortInseam", "skirtLength"]),
+      })
+      .passthrough()
+      .optional(),
+    alphaSize: z.enum(["S", "M", "L", "XL", "2XL", "3XL", "4XL"]).optional(),
   })
   .passthrough();
 
@@ -27,8 +41,15 @@ const paystackOrderItemSchema = z
 export const paystackReturnedMetadataSchema = z
   .object({
     version: z
-      .union([z.literal(1), z.literal("1")])
-      .transform(() => 1 as const),
+      .union([
+        z.literal(1),
+        z.literal("1"),
+        z.literal(2),
+        z.literal("2"),
+        z.literal(3),
+        z.literal("3"),
+      ])
+      .transform((version) => Number(version) as 1 | 2 | 3),
     clerkUserId: z.string().trim().min(1).max(200),
     userEmail: z.string().email().max(254),
     sanityCustomerId: z.string().trim().min(1).max(200),
@@ -41,19 +62,4 @@ export const paystackReturnedMetadataSchema = z
     address: checkoutAddressSchema,
     cancel_action: z.string().url().optional(),
   })
-  .passthrough()
-  .superRefine((metadata, context) => {
-    const productIds = new Set<string>();
-
-    for (const [index, item] of metadata.items.entries()) {
-      if (productIds.has(item.productId)) {
-        context.addIssue({
-          code: "custom",
-          path: ["items", index, "productId"],
-          message: "Duplicate products are not allowed",
-        });
-      }
-      productIds.add(item.productId);
-    }
-  });
-
+  .passthrough();

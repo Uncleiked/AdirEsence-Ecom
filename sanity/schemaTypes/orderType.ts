@@ -46,6 +46,72 @@ export const orderType = defineType({
               description: "Price at time of purchase",
               validation: (rule) => rule.required(),
             }),
+            defineField({
+              name: "sizing",
+              title: "Garment measurements",
+              type: "object",
+              readOnly: true,
+              fields: [
+                defineField({ name: "version", type: "number" }),
+                defineField({
+                  name: "mode",
+                  type: "string",
+                  options: {
+                    list: [
+                      { title: "Trouser", value: "trouser" },
+                      { title: "Shorts / jorts", value: "shorts" },
+                      { title: "Skirt", value: "skirt" },
+                    ],
+                  },
+                }),
+                defineField({
+                  name: "fitProfile",
+                  title: "Fit profile",
+                  type: "string",
+                  options: {
+                    list: [
+                      { title: "Men's cut", value: "men" },
+                      { title: "Women's cut", value: "women" },
+                      { title: "Unisex / custom cut", value: "unisex" },
+                    ],
+                  },
+                }),
+                defineField({
+                  name: "unit",
+                  type: "string",
+                  options: {
+                    list: [
+                      { title: "Inches", value: "in" },
+                      { title: "Centimetres", value: "cm" },
+                    ],
+                  },
+                }),
+                defineField({ name: "waist", type: "number" }),
+                defineField({ name: "hip", title: "Hip / seat", type: "number" }),
+                defineField({ name: "length", type: "number" }),
+                defineField({
+                  name: "lengthType",
+                  title: "Length measurement",
+                  type: "string",
+                  options: {
+                    list: [
+                      { title: "Inside leg", value: "insideLeg" },
+                      { title: "Shorts inseam", value: "shortInseam" },
+                      { title: "Skirt length", value: "skirtLength" },
+                    ],
+                  },
+                }),
+              ],
+            }),
+            defineField({
+              name: "alphaSize",
+              title: "Selected size",
+              type: "string",
+              readOnly: true,
+              options: {
+                list: ["S", "M", "L", "XL", "2XL", "3XL", "4XL"],
+              },
+            }),
           ],
           preview: {
             select: {

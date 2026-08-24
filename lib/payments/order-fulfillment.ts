@@ -5,6 +5,8 @@ export interface PurchasedItem {
   unitPrice: number;
 }
 
+export type AggregatedPurchasedItem = PurchasedItem;
+
 export interface InventoryProduct {
   _id: string;
   _rev: string;
@@ -16,6 +18,23 @@ export interface InventoryShortage {
   name: string;
   requested: number;
   available: number;
+}
+
+export function aggregatePurchasedItems(
+  items: PurchasedItem[],
+): AggregatedPurchasedItem[] {
+  const aggregated = new Map<string, AggregatedPurchasedItem>();
+
+  for (const item of items) {
+    const current = aggregated.get(item.productId);
+    if (current) {
+      current.quantity += item.quantity;
+    } else {
+      aggregated.set(item.productId, { ...item });
+    }
+  }
+
+  return Array.from(aggregated.values());
 }
 
 export function calculateRemainingStock(
@@ -43,7 +62,7 @@ export function findInventoryShortages(
     products.map((product) => [product._id, product]),
   );
 
-  return items.flatMap((item) => {
+  return aggregatePurchasedItems(items).flatMap((item) => {
     const stock = productsById.get(item.productId)?.stock;
     const available =
       typeof stock === "number" && Number.isFinite(stock)

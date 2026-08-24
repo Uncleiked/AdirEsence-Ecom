@@ -18,6 +18,10 @@ import {
 } from "@/lib/payments/paystack-order";
 import { getPaystackOrderIdentity } from "@/lib/payments/paystack-reference";
 import {
+  resolveGarmentSizingMode,
+  validateProductSizing,
+} from "@/lib/sizing/garment-sizing";
+import {
   checkoutRequestSchema,
   type CheckoutAddress,
   type CheckoutItem,
@@ -35,6 +39,10 @@ interface CheckoutProduct {
   name?: string | null;
   price?: number | null;
   stock?: number | null;
+  category?: {
+    slug?: string | null;
+    sizingMode?: string | null;
+  } | null;
 }
 
 interface StoredOrder {
@@ -167,28 +175,15 @@ export async function createCheckoutSession(
 
     const validationErrors: string[] = [];
     const orderItems: PaystackCheckoutMetadata["items"] = [];
+    const requestedByProduct = new Map<string, number>();
     let subtotal = 0;
 
     for (const item of parsedItems) {
       const product = productById.get(item.productId);
-      const stock = product?.stock;
       const unitPrice = product?.price;
 
       if (!product) {
         validationErrors.push(`Product "${item.name}" is no longer available`);
-        continue;
-      }
-
-      if (
-        typeof stock !== "number" ||
-        !Number.isInteger(stock) ||
-        stock < item.quantity
-      ) {
-        validationErrors.push(
-          stock && stock > 0
-            ? `Only ${stock} of "${product.name ?? item.name}" available`
-            : `"${product.name ?? item.name}" is out of stock`,
-        );
         continue;
       }
 
@@ -203,13 +198,49 @@ export async function createCheckoutSession(
         continue;
       }
 
+      const sizingMode = resolveGarmentSizingMode(product.category);
+      const sizingErrors = validateProductSizing(
+        item.sizing,
+        item.alphaSize,
+        sizingMode,
+      );
+      if (sizingErrors.length > 0) {
+        validationErrors.push(
+          `"${product.name ?? item.name}": ${sizingErrors.join(", ")}`,
+        );
+        continue;
+      }
+
       orderItems.push({
         productId: product._id,
         name: product.name ?? item.name,
         quantity: item.quantity,
         unitPrice,
+        ...(item.sizing ? { sizing: item.sizing } : {}),
+        ...(item.alphaSize ? { alphaSize: item.alphaSize } : {}),
       });
+      requestedByProduct.set(
+        product._id,
+        (requestedByProduct.get(product._id) ?? 0) + item.quantity,
+      );
       subtotal += unitPrice * item.quantity;
+    }
+
+    for (const [productId, requestedQuantity] of requestedByProduct) {
+      const product = productById.get(productId);
+      const stock = product?.stock;
+
+      if (
+        typeof stock !== "number" ||
+        !Number.isInteger(stock) ||
+        stock < requestedQuantity
+      ) {
+        validationErrors.push(
+          stock && stock > 0
+            ? `Only ${stock} of "${product?.name ?? "this product"}" available`
+            : `"${product?.name ?? "This product"}" is out of stock`,
+        );
+      }
     }
 
     if (validationErrors.length > 0) {
@@ -250,7 +281,7 @@ export async function createCheckoutSession(
       userId,
     );
     const metadata: PaystackCheckoutMetadata = {
-      version: 1,
+      version: 3,
       clerkUserId: userId,
       userEmail,
       sanityCustomerId,

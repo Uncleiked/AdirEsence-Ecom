@@ -64,9 +64,9 @@ export function CartSheet() {
               <div className="space-y-2 py-2 divide-y divide-zinc-200 dark:divide-zinc-800">
                 {items.map((item) => (
                   <CartItem
-                    key={item.productId}
+                    key={item.lineId}
                     item={item}
-                    stockInfo={stockMap.get(item.productId)}
+                    stockInfo={stockMap.get(item.lineId)}
                   />
                 ))}
               </div>

@@ -8,6 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { cn, formatPrice } from "@/lib/utils";
 import { AddToCartButton } from "@/components/app/AddToCartButton";
 import { StockBadge } from "@/components/app/StockBadge";
+import { Button } from "@/components/ui/button";
+import { Ruler } from "lucide-react";
+import { resolveGarmentSizingMode } from "@/lib/sizing/garment-sizing";
 import type { FILTER_PRODUCTS_BY_NAME_QUERYResult } from "@/sanity.types";
 
 type Product = FILTER_PRODUCTS_BY_NAME_QUERYResult[number];
@@ -31,6 +34,7 @@ export function ProductCard({ product }: ProductCardProps) {
   const stock = product.stock ?? 0;
   const isOutOfStock = stock <= 0;
   const hasMultipleImages = images.length > 1;
+  const sizingMode = resolveGarmentSizingMode(product.category);
 
   return (
     <Card className="group relative flex h-full flex-col overflow-hidden rounded-2xl border-0 bg-white p-0 shadow-sm ring-1 ring-zinc-950/5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-zinc-950/10 dark:bg-zinc-900 dark:ring-white/10 dark:hover:shadow-zinc-950/50">
@@ -132,14 +136,27 @@ export function ProductCard({ product }: ProductCardProps) {
       </CardContent>
 
       <CardFooter className="mt-auto p-5 pt-0">
-        <AddToCartButton
-          productId={product._id}
-          name={product.name ?? "Unknown Product"}
-          price={product.price ?? 0}
-          image={mainImageUrl ?? undefined}
-          stock={stock}
-          slug={product.slug ?? ""}
-        />
+        {sizingMode === "none" ? (
+          <AddToCartButton
+            productId={product._id}
+            name={product.name ?? "Unknown Product"}
+            price={product.price ?? 0}
+            image={mainImageUrl ?? undefined}
+            stock={stock}
+            slug={product.slug ?? ""}
+          />
+        ) : isOutOfStock ? (
+          <Button className="h-11 w-full" disabled>
+            Out of stock
+          </Button>
+        ) : (
+          <Button asChild className="h-11 w-full">
+            <Link href={`/shop/products/${product.slug}`}>
+              <Ruler className="mr-2 h-4 w-4" />
+              {sizingMode === "alpha" ? "Choose size" : "Choose measurements"}
+            </Link>
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );

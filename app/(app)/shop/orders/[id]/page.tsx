@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { getCustomerOrderById } from "@/lib/orders/customer-orders";
 import { getOrderStatus } from "@/lib/constants/orderStatus";
 import { formatPrice, formatDate } from "@/lib/utils";
+import { ProductSizingDetails } from "@/components/app/ProductSizingDetails";
 
 export const metadata = {
   title: "Order Details | Furniture Shop",
@@ -100,6 +101,13 @@ export default async function OrderDetailPage({ params }: OrderPageProps) {
                       <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                         Qty: {item.quantity}
                       </p>
+                      {(item.sizing || item.alphaSize) && (
+                        <ProductSizingDetails
+                          sizing={item.sizing}
+                          alphaSize={item.alphaSize}
+                          className="mt-2"
+                        />
+                      )}
                     </div>
                   </div>
 

@@ -16,6 +16,7 @@ import {
 } from "@/lib/store/cart-store-provider";
 import { useCartStock } from "@/lib/hooks/useCartStock";
 import { createCheckoutSession } from "@/lib/actions/checkout";
+import { ProductSizingDetails } from "@/components/app/ProductSizingDetails";
 import {
   calculateShippingFee,
 } from "@/lib/constants/payment";
@@ -430,7 +431,7 @@ export function CheckoutClient({ settings }: CheckoutClientProps) {
             {/* Cart Items List */}
             <div className="max-h-48 overflow-y-auto mb-4 divide-y divide-zinc-100 dark:divide-zinc-800/60 pr-1">
               {items.map((item) => (
-                <div key={item.productId} className="py-3 flex items-center gap-3">
+                <div key={item.lineId} className="py-3 flex items-center gap-3">
                   <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800">
                     {item.image ? (
                       <Image
@@ -449,6 +450,14 @@ export function CheckoutClient({ settings }: CheckoutClientProps) {
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 truncate">{item.name}</p>
                     <p className="text-[10px] text-zinc-400">Qty: {item.quantity} • {formatPrice(item.price)} each</p>
+                    {(item.sizing || item.alphaSize) && (
+                      <ProductSizingDetails
+                        sizing={item.sizing}
+                        alphaSize={item.alphaSize}
+                        className="mt-1"
+                        compact
+                      />
+                    )}
                   </div>
                   <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">{formatPrice(item.price * item.quantity)}</p>
                 </div>

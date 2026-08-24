@@ -6,6 +6,7 @@ import { paystackReturnedMetadataSchema } from "@/lib/payments/paystack-validati
 import { getPaystackOrderIdentity } from "@/lib/payments/paystack-reference";
 import {
   calculateRemainingStock,
+  aggregatePurchasedItems,
   findInventoryShortages,
   type InventoryProduct,
 } from "@/lib/payments/order-fulfillment";
@@ -125,6 +126,8 @@ export async function fulfillPaidOrder(
         },
         quantity: item.quantity,
         priceAtPurchase: item.unitPrice,
+        ...(item.sizing ? { sizing: item.sizing } : {}),
+        ...(item.alphaSize ? { alphaSize: item.alphaSize } : {}),
       })),
       total: data.amount / 100,
       status,
@@ -159,7 +162,7 @@ export async function fulfillPaidOrder(
     }
 
     if (!hasInventoryIssue) {
-      for (const item of metadata.items) {
+      for (const item of aggregatePurchasedItems(metadata.items)) {
         const product = productsById.get(item.productId);
         if (!product || typeof product.stock !== "number") {
           throw new Error(

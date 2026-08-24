@@ -34,6 +34,17 @@ export const ORDER_BY_ID_QUERY = defineQuery(`*[
     _key,
     quantity,
     priceAtPurchase,
+    sizing{
+      version,
+      mode,
+      fitProfile,
+      unit,
+      waist,
+      hip,
+      length,
+      lengthType
+    },
+    alphaSize,
     product->{
       _id,
       name,
@@ -109,6 +120,17 @@ export const ORDER_DETAILS_BY_PAYMENT_ID_QUERY = defineQuery(`*[
     _key,
     quantity,
     priceAtPurchase,
+    sizing{
+      version,
+      mode,
+      fitProfile,
+      unit,
+      waist,
+      hip,
+      length,
+      lengthType
+    },
+    alphaSize,
     product->{
       _id,
       name,

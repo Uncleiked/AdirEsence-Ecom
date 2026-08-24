@@ -33,6 +33,25 @@ export const categoryType = defineType({
       },
       description: "Category thumbnail image",
     }),
+    defineField({
+      name: "sizingMode",
+      title: "Required product sizing",
+      type: "string",
+      initialValue: "none",
+      description:
+        "Require a letter size or body measurements for products in this category.",
+      options: {
+        list: [
+          { title: "No sizing", value: "none" },
+          { title: "Shirts / tops — S to 4XL", value: "alpha" },
+          { title: "Trousers — waist, hip and inside leg", value: "trouser" },
+          { title: "Shorts / jorts — waist, hip and inseam", value: "shorts" },
+          { title: "Skirts — waist, hip and waist-to-hem length", value: "skirt" },
+        ],
+        layout: "radio",
+      },
+      validation: (rule) => rule.required(),
+    }),
   ],
   preview: {
     select: {

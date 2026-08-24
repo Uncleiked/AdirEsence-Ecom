@@ -102,9 +102,16 @@ export const useTotalPrice = () =>
 /**
  * Find a specific item in cart
  */
-export const useCartItem = (productId: string) =>
+export const useCartItem = (lineId: string) =>
   useCartStore((state) =>
-    state.items.find((item) => item.productId === productId),
+    state.items.find((item) => item.lineId === lineId),
+  );
+
+export const useProductQuantity = (productId: string) =>
+  useCartStore((state) =>
+    state.items
+      .filter((item) => item.productId === productId)
+      .reduce((total, item) => total + item.quantity, 0),
   );
 
 /**

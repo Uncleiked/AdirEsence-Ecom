@@ -1,4 +1,11 @@
 import { z } from "zod";
+import {
+  FIT_PROFILES,
+  GARMENT_SIZING_VERSION,
+  MEASUREMENT_UNITS,
+  ALPHA_SIZES,
+  createCartLineId,
+} from "../sizing/garment-sizing.ts";
 
 const requiredText = (label: string, maxLength: number) =>
   z
@@ -9,6 +16,7 @@ const requiredText = (label: string, maxLength: number) =>
 
 export const checkoutItemSchema = z
   .object({
+    lineId: requiredText("Cart line ID", 500),
     productId: requiredText("Product ID", 200),
     name: requiredText("Product name", 200),
     price: z.number().finite().nonnegative(),
@@ -22,6 +30,20 @@ export const checkoutItemSchema = z
     // Used only for client-side cart navigation. Checkout still resolves the
     // authoritative product, price, and stock from Sanity by productId.
     slug: z.string().trim().max(200).optional(),
+    sizing: z
+      .object({
+        version: z.literal(GARMENT_SIZING_VERSION),
+        mode: z.enum(["trouser", "shorts", "skirt"]),
+        fitProfile: z.enum(FIT_PROFILES),
+        unit: z.enum(MEASUREMENT_UNITS),
+        waist: z.number().finite().positive(),
+        hip: z.number().finite().positive(),
+        length: z.number().finite().positive(),
+        lengthType: z.enum(["insideLeg", "shortInseam", "skirtLength"]),
+      })
+      .strict()
+      .optional(),
+    alphaSize: z.enum(ALPHA_SIZES).optional(),
   })
   .strict();
 
@@ -30,17 +52,28 @@ export const checkoutItemsSchema = z
   .min(1, "Your cart is empty")
   .max(50, "Your cart contains too many items")
   .superRefine((items, context) => {
-    const productIds = new Set<string>();
+    const lineIds = new Set<string>();
 
     for (const [index, item] of items.entries()) {
-      if (productIds.has(item.productId)) {
+      if (
+        item.lineId !==
+        createCartLineId(item.productId, item.sizing, item.alphaSize)
+      ) {
         context.addIssue({
           code: "custom",
-          path: [index, "productId"],
-          message: "Duplicate products are not allowed",
+          path: [index, "lineId"],
+          message: "Cart line configuration is invalid",
         });
       }
-      productIds.add(item.productId);
+
+      if (lineIds.has(item.lineId)) {
+        context.addIssue({
+          code: "custom",
+          path: [index, "lineId"],
+          message: "Duplicate cart lines are not allowed",
+        });
+      }
+      lineIds.add(item.lineId);
     }
   });
 
@@ -76,12 +109,14 @@ export const paystackOrderItemSchema = z
     name: requiredText("Product name", 200),
     quantity: z.number().int().positive().max(100),
     unitPrice: z.number().finite().nonnegative(),
+    sizing: checkoutItemSchema.shape.sizing,
+    alphaSize: checkoutItemSchema.shape.alphaSize,
   })
   .strict();
 
 export const paystackCheckoutMetadataSchema = z
   .object({
-    version: z.literal(1),
+    version: z.union([z.literal(1), z.literal(2), z.literal(3)]),
     clerkUserId: requiredText("Clerk user ID", 200),
     userEmail: z.string().email().max(254),
     sanityCustomerId: requiredText("Customer ID", 200),
@@ -92,21 +127,7 @@ export const paystackCheckoutMetadataSchema = z
     address: checkoutAddressSchema,
     cancel_action: z.string().url().optional(),
   })
-  .strict()
-  .superRefine((metadata, context) => {
-    const productIds = new Set<string>();
-
-    for (const [index, item] of metadata.items.entries()) {
-      if (productIds.has(item.productId)) {
-        context.addIssue({
-          code: "custom",
-          path: ["items", index, "productId"],
-          message: "Duplicate products are not allowed",
-        });
-      }
-      productIds.add(item.productId);
-    }
-  });
+  .strict();
 
 export type CheckoutAddress = z.infer<typeof checkoutAddressSchema>;
 export type CheckoutItem = z.infer<typeof checkoutItemSchema>;

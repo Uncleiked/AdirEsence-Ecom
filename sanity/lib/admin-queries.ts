@@ -3,6 +3,7 @@ import "server-only";
 import { groq } from "next-sanity";
 import { writeClient } from "./client";
 import { requireAdminAccess } from "./auth";
+import type { AlphaSize, GarmentSizing } from "@/lib/sizing/garment-sizing";
 
 const SANITY_DOCUMENT_ID_PATTERN = /^[A-Za-z0-9_.-]{1,128}$/;
 const adminFetchOptions = {
@@ -75,6 +76,8 @@ export interface AdminOrderDetail extends AdminOrderSummary {
     _key: string;
     quantity: number | null;
     priceAtPurchase: number | null;
+    sizing: GarmentSizing | null;
+    alphaSize: AlphaSize | null;
     product: {
       _id: string;
       name: string | null;
@@ -226,6 +229,17 @@ export async function getOrderById(
         _key,
         quantity,
         priceAtPurchase,
+        sizing{
+          version,
+          mode,
+          fitProfile,
+          unit,
+          waist,
+          hip,
+          length,
+          lengthType
+        },
+        alphaSize,
         product->{
           _id,
           name,

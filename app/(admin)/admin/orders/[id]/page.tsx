@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ORDER_STATUS_SANITY_LIST } from "@/lib/constants/orderStatus";
 import { formatDate, formatPrice } from "@/lib/utils";
+import { ProductSizingDetails } from "@/components/app/ProductSizingDetails";
 import {
   updateOrderAddressFromForm,
   updateOrderStatusFromForm,
@@ -147,6 +148,13 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
                     <p className="mt-1 text-sm text-zinc-500">
                       Qty: {item.quantity ?? 0} × {formatPrice(item.priceAtPurchase)}
                     </p>
+                    {(item.sizing || item.alphaSize) && (
+                      <ProductSizingDetails
+                        sizing={item.sizing}
+                        alphaSize={item.alphaSize}
+                        className="mt-2"
+                      />
+                    )}
                   </div>
                   <p className="font-medium text-zinc-900 dark:text-zinc-100">
                     {formatPrice((item.priceAtPurchase ?? 0) * (item.quantity ?? 0))}

@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { AddToCartButton } from "@/components/app/AddToCartButton";
 import { AskAISimilarButton } from "@/components/app/AskAISimilarButton";
+import { GarmentPurchaseForm } from "@/components/app/GarmentPurchaseForm";
+import { AlphaSizePurchaseForm } from "@/components/app/AlphaSizePurchaseForm";
 import { StockBadge } from "@/components/app/StockBadge";
 import { formatPrice } from "@/lib/utils";
 import type { PRODUCT_BY_SLUG_QUERYResult } from "@/sanity.types";
+import { resolveGarmentSizingMode } from "@/lib/sizing/garment-sizing";
 
 interface ProductInfoProps {
   product: NonNullable<PRODUCT_BY_SLUG_QUERYResult>;
@@ -11,6 +14,7 @@ interface ProductInfoProps {
 
 export function ProductInfo({ product }: ProductInfoProps) {
   const imageUrl = product.images?.[0]?.asset?.url;
+  const sizingMode = resolveGarmentSizingMode(product.category);
 
   return (
     <div className="flex flex-col">
@@ -44,14 +48,35 @@ export function ProductInfo({ product }: ProductInfoProps) {
       {/* Stock & Add to Cart */}
       <div className="mt-6 flex flex-col gap-3">
         <StockBadge productId={product._id} stock={product.stock ?? 0} />
-        <AddToCartButton
-          productId={product._id}
-          name={product.name ?? "Unknown Product"}
-          price={product.price ?? 0}
-          image={imageUrl ?? undefined}
-          stock={product.stock ?? 0}
-          slug={product.slug ?? ""}
-        />
+        {sizingMode === "none" ? (
+          <AddToCartButton
+            productId={product._id}
+            name={product.name ?? "Unknown Product"}
+            price={product.price ?? 0}
+            image={imageUrl ?? undefined}
+            stock={product.stock ?? 0}
+            slug={product.slug ?? ""}
+          />
+        ) : sizingMode === "alpha" ? (
+          <AlphaSizePurchaseForm
+            productId={product._id}
+            name={product.name ?? "Unknown Product"}
+            price={product.price ?? 0}
+            image={imageUrl ?? undefined}
+            stock={product.stock ?? 0}
+            slug={product.slug ?? ""}
+          />
+        ) : (
+          <GarmentPurchaseForm
+            productId={product._id}
+            name={product.name ?? "Unknown Product"}
+            price={product.price ?? 0}
+            image={imageUrl ?? undefined}
+            stock={product.stock ?? 0}
+            slug={product.slug ?? ""}
+            mode={sizingMode}
+          />
+        )}
         <AskAISimilarButton productName={product.name ?? "this product"} />
       </div>
 

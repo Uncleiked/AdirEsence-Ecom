@@ -1,14 +1,22 @@
 import { createStore } from "zustand/vanilla";
 import { persist } from "zustand/middleware";
+import {
+  createCartLineId,
+  type AlphaSize,
+  type GarmentSizing,
+} from "@/lib/sizing/garment-sizing";
 
 // Types
 export interface CartItem {
+  lineId: string;
   productId: string;
   name: string;
   price: number;
   quantity: number;
   image?: string;
   slug: string;
+  sizing?: GarmentSizing;
+  alphaSize?: AlphaSize;
 }
 
 export interface CartState {
@@ -17,9 +25,12 @@ export interface CartState {
 }
 
 export interface CartActions {
-  addItem: (item: Omit<CartItem, "quantity">, quantity?: number) => void;
-  removeItem: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
+  addItem: (
+    item: Omit<CartItem, "lineId" | "quantity">,
+    quantity?: number,
+  ) => void;
+  removeItem: (lineId: string) => void;
+  updateQuantity: (lineId: string, quantity: number) => void;
   clearCart: () => void;
   toggleCart: () => void;
   openCart: () => void;
@@ -47,36 +58,41 @@ export const createCartStore = (initState: CartState = defaultInitState) => {
 
         addItem: (item, quantity = 1) =>
           set((state) => {
+            const lineId = createCartLineId(
+              item.productId,
+              item.sizing,
+              item.alphaSize,
+            );
             const existing = state.items.find(
-              (i) => i.productId === item.productId
+              (i) => i.lineId === lineId,
             );
             if (existing) {
               return {
                 items: state.items.map((i) =>
-                  i.productId === item.productId
+                  i.lineId === lineId
                     ? { ...i, quantity: i.quantity + quantity }
                     : i
                 ),
               };
             }
-            return { items: [...state.items, { ...item, quantity }] };
+            return { items: [...state.items, { ...item, lineId, quantity }] };
           }),
 
-        removeItem: (productId) =>
+        removeItem: (lineId) =>
           set((state) => ({
-            items: state.items.filter((i) => i.productId !== productId),
+            items: state.items.filter((i) => i.lineId !== lineId),
           })),
 
-        updateQuantity: (productId, quantity) =>
+        updateQuantity: (lineId, quantity) =>
           set((state) => {
             if (quantity <= 0) {
               return {
-                items: state.items.filter((i) => i.productId !== productId),
+                items: state.items.filter((i) => i.lineId !== lineId),
               };
             }
             return {
               items: state.items.map((i) =>
-                i.productId === productId ? { ...i, quantity } : i
+                i.lineId === lineId ? { ...i, quantity } : i,
               ),
             };
           }),
@@ -88,6 +104,19 @@ export const createCartStore = (initState: CartState = defaultInitState) => {
       }),
       {
         name: "cart-storage",
+        version: 2,
+        migrate: (persistedState) => {
+          const state = persistedState as Partial<CartState>;
+          return {
+            ...state,
+            items: (state.items ?? []).map((item) => ({
+              ...item,
+              lineId:
+                item.lineId ??
+                createCartLineId(item.productId, item.sizing, item.alphaSize),
+            })),
+          } as CartState;
+        },
         // Skip automatic hydration - we'll trigger it manually on the client
         skipHydration: true,
         // Only persist items, not UI state like isOpen

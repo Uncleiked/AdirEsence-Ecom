@@ -2,10 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Trash2 } from "lucide-react";
+import { Minus, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useCartActions } from "@/lib/store/cart-store-provider";
-import { AddToCartButton } from "@/components/app/AddToCartButton";
+import {
+  useCartActions,
+  useProductQuantity,
+} from "@/lib/store/cart-store-provider";
+import { ProductSizingDetails } from "@/components/app/ProductSizingDetails";
 import { StockBadge } from "@/components/app/StockBadge";
 import { cn, formatPrice } from "@/lib/utils";
 import type { CartItem as CartItemType } from "@/lib/store/cart-store";
@@ -17,12 +20,14 @@ interface CartItemProps {
 }
 
 export function CartItem({ item, stockInfo }: CartItemProps) {
-  const { removeItem } = useCartActions();
+  const { removeItem, updateQuantity } = useCartActions();
+  const productQuantity = useProductQuantity(item.productId);
 
   const isOutOfStock = stockInfo?.isOutOfStock ?? false;
   const exceedsStock = stockInfo?.exceedsStock ?? false;
   const currentStock = stockInfo?.currentStock ?? 999;
   const hasIssue = isOutOfStock || exceedsStock;
+  const isAtMax = productQuantity >= currentStock;
 
   return (
     <div
@@ -69,7 +74,7 @@ export function CartItem({ item, stockInfo }: CartItemProps) {
             variant="ghost"
             size="icon"
             className="h-8 w-8 text-zinc-400 hover:text-red-500"
-            onClick={() => removeItem(item.productId)}
+            onClick={() => removeItem(item.lineId)}
           >
             <Trash2 className="h-4 w-4" />
             <span className="sr-only">Remove {item.name}</span>
@@ -79,20 +84,41 @@ export function CartItem({ item, stockInfo }: CartItemProps) {
         <p className="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">
           {formatPrice(item.price)}
         </p>
+        {(item.sizing || item.alphaSize) && (
+          <ProductSizingDetails
+            sizing={item.sizing}
+            alphaSize={item.alphaSize}
+            className="mt-2"
+          />
+        )}
 
         {/* Stock Badge & Quantity Controls */}
         <div className="mt-2 flex flex-row justify-between items-center gap-2">
           <StockBadge productId={item.productId} stock={currentStock} />
           {!isOutOfStock && (
-            <div className="w-32 flex self-end ml-auto">
-              <AddToCartButton
-                productId={item.productId}
-                name={item.name}
-                price={item.price}
-                image={item.image}
-                stock={currentStock}
-                slug={item.slug ?? ""}
-              />
+            <div className="ml-auto flex h-9 w-32 items-center rounded-md border border-zinc-200 dark:border-zinc-700">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-full flex-1"
+                onClick={() => updateQuantity(item.lineId, item.quantity - 1)}
+              >
+                <Minus className="h-4 w-4" />
+              </Button>
+              <span className="flex-1 text-center text-sm font-semibold tabular-nums">
+                {item.quantity}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-full flex-1 disabled:opacity-20"
+                onClick={() => updateQuantity(item.lineId, item.quantity + 1)}
+                disabled={isAtMax}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
             </div>
           )}
         </div>

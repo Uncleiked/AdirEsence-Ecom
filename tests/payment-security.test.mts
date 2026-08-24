@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { checkoutItemsSchema } from "../lib/validation/checkout.ts";
 import {
+  aggregatePurchasedItems,
   calculateRemainingStock,
   findInventoryShortages,
 } from "../lib/payments/order-fulfillment.ts";
@@ -9,8 +10,18 @@ import { takeRateLimit } from "../lib/security/rate-limit.ts";
 import { paystackReturnedMetadataSchema } from "../lib/payments/paystack-validation.ts";
 import { resolveCheckoutBaseUrl } from "../lib/payments/app-url.ts";
 import { getPaystackOrderIdentity } from "../lib/payments/paystack-reference.ts";
+import {
+  GARMENT_SIZING_VERSION,
+  ALPHA_SIZES,
+  createCartLineId,
+  resolveGarmentSizingMode,
+  validateGarmentSizing,
+  validateProductSizing,
+  type GarmentSizing,
+} from "../lib/sizing/garment-sizing.ts";
 
 const validItem = {
+  lineId: "product-1",
   productId: "product-1",
   name: "Chair",
   price: 50_000,
@@ -43,13 +54,116 @@ test("checkout rejects non-positive, fractional, and non-finite quantities", () 
   }
 });
 
-test("checkout rejects duplicate product IDs", () => {
+test("checkout rejects duplicate cart line IDs", () => {
   const result = checkoutItemsSchema.safeParse([
     validItem,
     { ...validItem, quantity: 2 },
   ]);
 
   assert.equal(result.success, false);
+});
+
+const trouserSizing: GarmentSizing = {
+  version: GARMENT_SIZING_VERSION,
+  mode: "trouser",
+  fitProfile: "women",
+  unit: "in",
+  waist: 30,
+  hip: 40,
+  length: 32,
+  lengthType: "insideLeg",
+};
+
+test("checkout accepts separate measurement configurations for one product", () => {
+  const secondSizing: GarmentSizing = {
+    ...trouserSizing,
+    fitProfile: "men",
+    waist: 34,
+    hip: 42,
+  };
+  const result = checkoutItemsSchema.safeParse([
+    {
+      ...validItem,
+      lineId: createCartLineId(validItem.productId, trouserSizing),
+      sizing: trouserSizing,
+    },
+    {
+      ...validItem,
+      lineId: createCartLineId(validItem.productId, secondSizing),
+      sizing: secondSizing,
+    },
+  ]);
+
+  assert.equal(result.success, true);
+});
+
+test("checkout accepts every supported compulsory shirt size", () => {
+  for (const alphaSize of ALPHA_SIZES) {
+    const result = checkoutItemsSchema.safeParse([
+      {
+        ...validItem,
+        lineId: createCartLineId(validItem.productId, undefined, alphaSize),
+        alphaSize,
+      },
+    ]);
+    assert.equal(result.success, true, `expected ${alphaSize} to be accepted`);
+  }
+});
+
+test("garment sizing applies category-specific meanings and ranges", () => {
+  assert.equal(resolveGarmentSizingMode({ slug: "jorts" }), "shorts");
+  assert.equal(resolveGarmentSizingMode({ slug: "skirts" }), "skirt");
+  assert.equal(resolveGarmentSizingMode({ slug: "shirts" }), "alpha");
+  assert.deepEqual(validateGarmentSizing(trouserSizing, "trouser"), []);
+  assert.match(
+    validateGarmentSizing(
+      {
+        ...trouserSizing,
+        mode: "shorts",
+        lengthType: "shortInseam",
+        length: 32,
+      },
+      "shorts",
+    )[0] ?? "",
+    /between 2 and 20 in/,
+  );
+  assert.match(
+    validateGarmentSizing(undefined, "skirt")[0] ?? "",
+    /measurements/i,
+  );
+});
+
+test("letter-size categories require a size and reject measurements", () => {
+  assert.match(
+    validateProductSizing(undefined, undefined, "alpha")[0] ?? "",
+    /choose a shirt size/i,
+  );
+  assert.deepEqual(validateProductSizing(undefined, "3XL", "alpha"), []);
+  assert.match(
+    validateProductSizing(trouserSizing, "M", "trouser").at(-1) ?? "",
+    /letter size is not accepted/i,
+  );
+});
+
+test("stock quantities aggregate across differently sized lines", () => {
+  assert.deepEqual(
+    aggregatePurchasedItems([
+      { productId: "same", name: "Trouser", quantity: 1, unitPrice: 100 },
+      { productId: "same", name: "Trouser", quantity: 2, unitPrice: 100 },
+    ]),
+    [{ productId: "same", name: "Trouser", quantity: 3, unitPrice: 100 }],
+  );
+
+  assert.deepEqual(
+    findInventoryShortages(
+      [
+        { productId: "same", name: "Trouser", quantity: 1, unitPrice: 100 },
+        { productId: "same", name: "Trouser", quantity: 2, unitPrice: 100 },
+      ],
+      [{ _id: "same", _rev: "rev", stock: 2 }],
+    ),
+    [{ productId: "same", name: "Trouser", requested: 3, available: 2 }],
+  );
 });
 
 test("inventory assessment reports missing and insufficient products", () => {
@@ -115,6 +229,89 @@ test("Paystack-returned string metadata is safely normalized", () => {
     assert.equal(result.data.items[0]?.unitPrice, 34_000);
     assert.equal(result.data.shippingFee, 50);
     assert.equal(result.data.expectedAmountKobo, 6_805_000);
+  }
+});
+
+test("Paystack metadata retains garment measurements", () => {
+  const result = paystackReturnedMetadataSchema.safeParse({
+    version: "2",
+    clerkUserId: "user_123",
+    userEmail: "customer@example.com",
+    sanityCustomerId: "customer.clerk.123",
+    items: [
+      {
+        productId: "product-1",
+        name: "Adire trouser",
+        quantity: "1",
+        unitPrice: "34000",
+        sizing: {
+          ...trouserSizing,
+          version: "1",
+          waist: "30",
+          hip: "40",
+          length: "32",
+        },
+      },
+    ],
+    shippingFee: "50",
+    serviceCharge: "0",
+    expectedAmountKobo: "3405000",
+    address: {
+      name: "Customer",
+      email: "customer@example.com",
+      phone: "+2349000000000",
+      line1: "1 Test Street",
+      line2: "",
+      city: "Lagos",
+      state: "Lagos",
+      postcode: "100001",
+      country: "NG",
+    },
+  });
+
+  assert.equal(result.success, true);
+  if (result.success) {
+    assert.equal(result.data.version, 2);
+    assert.equal(result.data.items[0]?.sizing?.waist, 30);
+    assert.equal(result.data.items[0]?.sizing?.lengthType, "insideLeg");
+  }
+});
+
+test("Paystack metadata retains a selected shirt size", () => {
+  const result = paystackReturnedMetadataSchema.safeParse({
+    version: "3",
+    clerkUserId: "user_123",
+    userEmail: "customer@example.com",
+    sanityCustomerId: "customer.clerk.123",
+    items: [
+      {
+        productId: "shirt-1",
+        name: "Adire shirt",
+        quantity: "1",
+        unitPrice: "25000",
+        alphaSize: "4XL",
+      },
+    ],
+    shippingFee: "50",
+    serviceCharge: "0",
+    expectedAmountKobo: "2505000",
+    address: {
+      name: "Customer",
+      email: "customer@example.com",
+      phone: "+2349000000000",
+      line1: "1 Test Street",
+      line2: "",
+      city: "Lagos",
+      state: "Lagos",
+      postcode: "100001",
+      country: "NG",
+    },
+  });
+
+  assert.equal(result.success, true);
+  if (result.success) {
+    assert.equal(result.data.version, 3);
+    assert.equal(result.data.items[0]?.alphaSize, "4XL");
   }
 });
 

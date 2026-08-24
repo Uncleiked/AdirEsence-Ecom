@@ -908,6 +908,160 @@
                   "type": "number"
                 },
                 "optional": true
+              },
+              "sizing": {
+                "type": "objectAttribute",
+                "value": {
+                  "type": "object",
+                  "attributes": {
+                    "version": {
+                      "type": "objectAttribute",
+                      "value": {
+                        "type": "number"
+                      },
+                      "optional": true
+                    },
+                    "mode": {
+                      "type": "objectAttribute",
+                      "value": {
+                        "type": "union",
+                        "of": [
+                          {
+                            "type": "string",
+                            "value": "trouser"
+                          },
+                          {
+                            "type": "string",
+                            "value": "shorts"
+                          },
+                          {
+                            "type": "string",
+                            "value": "skirt"
+                          }
+                        ]
+                      },
+                      "optional": true
+                    },
+                    "fitProfile": {
+                      "type": "objectAttribute",
+                      "value": {
+                        "type": "union",
+                        "of": [
+                          {
+                            "type": "string",
+                            "value": "men"
+                          },
+                          {
+                            "type": "string",
+                            "value": "women"
+                          },
+                          {
+                            "type": "string",
+                            "value": "unisex"
+                          }
+                        ]
+                      },
+                      "optional": true
+                    },
+                    "unit": {
+                      "type": "objectAttribute",
+                      "value": {
+                        "type": "union",
+                        "of": [
+                          {
+                            "type": "string",
+                            "value": "in"
+                          },
+                          {
+                            "type": "string",
+                            "value": "cm"
+                          }
+                        ]
+                      },
+                      "optional": true
+                    },
+                    "waist": {
+                      "type": "objectAttribute",
+                      "value": {
+                        "type": "number"
+                      },
+                      "optional": true
+                    },
+                    "hip": {
+                      "type": "objectAttribute",
+                      "value": {
+                        "type": "number"
+                      },
+                      "optional": true
+                    },
+                    "length": {
+                      "type": "objectAttribute",
+                      "value": {
+                        "type": "number"
+                      },
+                      "optional": true
+                    },
+                    "lengthType": {
+                      "type": "objectAttribute",
+                      "value": {
+                        "type": "union",
+                        "of": [
+                          {
+                            "type": "string",
+                            "value": "insideLeg"
+                          },
+                          {
+                            "type": "string",
+                            "value": "shortInseam"
+                          },
+                          {
+                            "type": "string",
+                            "value": "skirtLength"
+                          }
+                        ]
+                      },
+                      "optional": true
+                    }
+                  }
+                },
+                "optional": true
+              },
+              "alphaSize": {
+                "type": "objectAttribute",
+                "value": {
+                  "type": "union",
+                  "of": [
+                    {
+                      "type": "string",
+                      "value": "S"
+                    },
+                    {
+                      "type": "string",
+                      "value": "M"
+                    },
+                    {
+                      "type": "string",
+                      "value": "L"
+                    },
+                    {
+                      "type": "string",
+                      "value": "XL"
+                    },
+                    {
+                      "type": "string",
+                      "value": "2XL"
+                    },
+                    {
+                      "type": "string",
+                      "value": "3XL"
+                    },
+                    {
+                      "type": "string",
+                      "value": "4XL"
+                    }
+                  ]
+                },
+                "optional": true
               }
             },
             "rest": {
@@ -1675,6 +1829,35 @@
               }
             }
           }
+        },
+        "optional": true
+      },
+      "sizingMode": {
+        "type": "objectAttribute",
+        "value": {
+          "type": "union",
+          "of": [
+            {
+              "type": "string",
+              "value": "none"
+            },
+            {
+              "type": "string",
+              "value": "alpha"
+            },
+            {
+              "type": "string",
+              "value": "trouser"
+            },
+            {
+              "type": "string",
+              "value": "shorts"
+            },
+            {
+              "type": "string",
+              "value": "skirt"
+            }
+          ]
         },
         "optional": true
       }
