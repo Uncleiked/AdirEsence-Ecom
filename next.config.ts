@@ -3,6 +3,11 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: false,
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "10mb",
+    },
+  },
   turbopack: {
     resolveAlias: {
       "hls.js": "hls.js/dist/hls.min.js",
@@ -23,4 +28,3 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-

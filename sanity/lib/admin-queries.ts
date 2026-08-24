@@ -1,135 +1,240 @@
-import { client } from "./client";
+import "server-only";
+
 import { groq } from "next-sanity";
+import { writeClient } from "./client";
+import { requireAdminAccess } from "./auth";
 
-// --- DASHBOARD QUERIES ---
+const SANITY_DOCUMENT_ID_PATTERN = /^[A-Za-z0-9_.-]{1,128}$/;
+const adminFetchOptions = {
+  cache: "no-store" as const,
+  perspective: "published" as const,
+  stega: false,
+};
 
-export async function getDashboardStats() {
-  const query = groq`{
-    "totalRevenue": math::sum(*[_type == "order" && status != "cancelled"].total),
-    "totalOrders": count(*[_type == "order"]),
-    "newCustomers": count(*[_type == "customer"]),
-    "returnRate": 0, // Placeholder, implement actual logic if needed
-    "totalProducts": count(*[_type == "product"]),
-    "lowStockProducts": count(*[_type == "product" && stock <= 5])
-  }`;
-  return client.fetch(query);
+export interface AdminProductSummary {
+  _id: string;
+  name: string | null;
+  slug: string | null;
+  price: number | null;
+  stock: number | null;
+  featured: boolean | null;
+  category: string | null;
+  imageUrl: string | null;
 }
 
-export async function getRecentOrders(limit = 5) {
-  const query = groq`*[_type == "order"] | order(createdAt desc)[0...$limit] {
-    _id,
-    orderNumber,
-    "customer": customer->{
-      "name": address.name,
-      email
-    },
-    total,
-    status,
-    createdAt
-  }`;
-  return client.fetch(query, { limit });
+export interface AdminProductImage {
+  _key: string;
+  assetRef: string;
+  url: string | null;
 }
 
-export async function getLowStockProducts(limit = 5) {
-  const query = groq`*[_type == "product" && stock <= 5] | order(stock asc)[0...$limit] {
-    _id,
-    name,
-    stock,
-    "image": images[0]{
-      asset->{
-        url
-      }
-    }
-  }`;
-  return client.fetch(query, { limit });
+export interface AdminProductDetail extends AdminProductSummary {
+  description: string | null;
+  material: string | null;
+  color: string | null;
+  dimensions: string | null;
+  assemblyRequired: boolean | null;
+  images: AdminProductImage[];
 }
 
-// --- PRODUCTS QUERIES ---
-
-export async function getAllProducts() {
-  const query = groq`*[_type == "product"] | order(_createdAt desc) {
-    _id,
-    name,
-    price,
-    stock,
-    featured,
-    "image": images[0]{
-      asset->{
-        url
-      }
-    }
-  }`;
-  return client.fetch(query);
+export interface AdminOrderSummary {
+  _id: string;
+  orderNumber: string | null;
+  email: string | null;
+  total: number | null;
+  status: string | null;
+  createdAt: string | null;
+  itemCount: number;
 }
 
-export async function getProductById(id: string) {
-  const query = groq`*[_type == "product" && _id == $id][0] {
-    _id,
-    name,
-    description,
-    price,
-    stock,
-    featured,
-    material,
-    color,
-    dimensions,
-    assemblyRequired,
-    "category": category->{
+export interface AdminOrderDetail extends AdminOrderSummary {
+  paymentId: string | null;
+  paymentProvider: string | null;
+  shippingFee: number | null;
+  serviceCharge: number | null;
+  inventoryIssue: {
+    reason: string | null;
+    items: Array<{
+      _key: string;
+      name: string | null;
+      requested: number | null;
+      available: number | null;
+    }>;
+  } | null;
+  address: {
+    name: string | null;
+    line1: string | null;
+    line2: string | null;
+    city: string | null;
+    state: string | null;
+    postcode: string | null;
+    country: string | null;
+    phone: string | null;
+  } | null;
+  items: Array<{
+    _key: string;
+    quantity: number | null;
+    priceAtPurchase: number | null;
+    product: {
+      _id: string;
+      name: string | null;
+      slug: string | null;
+      imageUrl: string | null;
+    } | null;
+  }>;
+}
+
+export interface AdminDashboardData {
+  stats: {
+    totalProducts: number;
+    totalOrders: number;
+    lowStockProducts: number;
+  };
+  recentOrders: AdminOrderSummary[];
+  lowStock: AdminProductSummary[];
+}
+
+const PRODUCT_SUMMARY_PROJECTION = groq`{
+  _id,
+  name,
+  "slug": slug.current,
+  price,
+  stock,
+  featured,
+  "category": category->title,
+  "imageUrl": images[0].asset->url
+}`;
+
+const ORDER_SUMMARY_PROJECTION = groq`{
+  _id,
+  orderNumber,
+  email,
+  total,
+  status,
+  createdAt,
+  "itemCount": count(items)
+}`;
+
+export async function getAdminDashboardData(): Promise<AdminDashboardData> {
+  await requireAdminAccess();
+
+  return writeClient.fetch<AdminDashboardData>(
+    groq`{
+      "stats": {
+        "totalProducts": count(*[_type == "product"]),
+        "totalOrders": count(*[_type == "order"]),
+        "lowStockProducts": count(*[_type == "product" && stock <= 5])
+      },
+      "recentOrders": *[_type == "order"] | order(createdAt desc)[0...5]
+        ${ORDER_SUMMARY_PROJECTION},
+      "lowStock": *[_type == "product" && stock <= 5] | order(stock asc)[0...5]
+        ${PRODUCT_SUMMARY_PROJECTION}
+    }`,
+    {},
+    adminFetchOptions,
+  );
+}
+
+export async function getAllProducts(): Promise<AdminProductSummary[]> {
+  await requireAdminAccess();
+
+  return writeClient.fetch<AdminProductSummary[]>(
+    groq`*[_type == "product"] | order(stock asc, name asc)
+      ${PRODUCT_SUMMARY_PROJECTION}`,
+    {},
+    adminFetchOptions,
+  );
+}
+
+export async function getProductById(
+  id: string,
+): Promise<AdminProductDetail | null> {
+  await requireAdminAccess();
+  if (!SANITY_DOCUMENT_ID_PATTERN.test(id)) return null;
+
+  return writeClient.fetch<AdminProductDetail | null>(
+    groq`*[_type == "product" && _id == $id][0]{
       _id,
-      title
-    },
-    images[]{
-      asset->{
-        url
+      name,
+      "slug": slug.current,
+      price,
+      stock,
+      featured,
+      "category": category->title,
+      "imageUrl": images[0].asset->url,
+      description,
+      material,
+      color,
+      dimensions,
+      assemblyRequired,
+      "images": images[]{
+        _key,
+        "assetRef": asset._ref,
+        "url": asset->url
       }
-    }
-  }`;
-  return client.fetch(query, { id });
+    }`,
+    { id },
+    adminFetchOptions,
+  );
 }
 
-// --- ORDERS QUERIES ---
+export async function getAllOrders(): Promise<AdminOrderSummary[]> {
+  await requireAdminAccess();
 
-export async function getAllOrders() {
-  const query = groq`*[_type == "order"] | order(createdAt desc) {
-    _id,
-    orderNumber,
-    "customer": customer->{
-      "name": address.name,
-      email
-    },
-    total,
-    status,
-    createdAt
-  }`;
-  return client.fetch(query);
+  return writeClient.fetch<AdminOrderSummary[]>(
+    groq`*[_type == "order"] | order(createdAt desc)
+      ${ORDER_SUMMARY_PROJECTION}`,
+    {},
+    adminFetchOptions,
+  );
 }
 
-export async function getOrderById(id: string) {
-  const query = groq`*[_type == "order" && _id == $id][0] {
-    _id,
-    orderNumber,
-    total,
-    status,
-    createdAt,
-    "customer": customer->{
+export async function getOrderById(
+  id: string,
+): Promise<AdminOrderDetail | null> {
+  await requireAdminAccess();
+  if (!SANITY_DOCUMENT_ID_PATTERN.test(id)) return null;
+
+  return writeClient.fetch<AdminOrderDetail | null>(
+    groq`*[_type == "order" && _id == $id][0]{
       _id,
+      orderNumber,
       email,
-      clerkUserId,
-      address
-    },
-    items[]{
-      quantity,
-      priceAtPurchase,
-      "product": product->{
-        _id,
+      total,
+      status,
+      createdAt,
+      "itemCount": count(items),
+      paymentId,
+      paymentProvider,
+      shippingFee,
+      serviceCharge,
+      inventoryIssue{
+        reason,
+        items[]{ _key, name, requested, available }
+      },
+      address{
         name,
-        "image": images[0]{
-          asset->{
-            url
-          }
+        line1,
+        line2,
+        city,
+        state,
+        postcode,
+        country,
+        phone
+      },
+      items[]{
+        _key,
+        quantity,
+        priceAtPurchase,
+        product->{
+          _id,
+          name,
+          "slug": slug.current,
+          "imageUrl": images[0].asset->url
         }
       }
-    }
-  }`;
-  return client.fetch(query, { id });
+    }`,
+    { id },
+    adminFetchOptions,
+  );
 }

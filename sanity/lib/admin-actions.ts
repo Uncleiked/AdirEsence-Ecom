@@ -2,7 +2,27 @@
 
 import { writeClient } from "./client";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { requireAdminAccess } from "./auth";
+
+const SANITY_DOCUMENT_ID_PATTERN = /^[A-Za-z0-9_.-]{1,128}$/;
+const SANITY_ARRAY_KEY_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
+
+function assertDocumentId(id: string) {
+  if (!SANITY_DOCUMENT_ID_PATTERN.test(id)) {
+    throw new Error("Invalid Sanity document ID");
+  }
+}
+
+function formText(formData: FormData, name: string): string {
+  const value = formData.get(name);
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function formNumber(formData: FormData, name: string): number {
+  const value = Number(formText(formData, name));
+  return Number.isFinite(value) ? value : 0;
+}
 
 export async function updateProductStock(id: string, newStock: number) {
   await requireAdminAccess();
@@ -183,4 +203,162 @@ export async function uploadImage(formData: FormData) {
     console.error("Upload failed:", error);
     return { success: false, error: "Upload failed" };
   }
+}
+
+/**
+ * Form-oriented admin actions. These keep the Sanity write token on the
+ * server and are the mutation boundary for the Clerk-authenticated dashboard.
+ */
+export async function createProductAndRedirect() {
+  await requireAdminAccess();
+
+  const id = crypto.randomUUID();
+  await writeClient.create({
+    _id: id,
+    _type: "product",
+    name: "Untitled Product",
+    slug: { _type: "slug", current: `product-${id.slice(0, 8)}` },
+    price: 1,
+    stock: 0,
+    featured: false,
+    assemblyRequired: false,
+  });
+  revalidatePath("/admin");
+  revalidatePath("/admin/inventory");
+  redirect(`/admin/inventory/${id}`);
+}
+
+export async function saveProductFromForm(id: string, formData: FormData) {
+  await requireAdminAccess();
+  assertDocumentId(id);
+
+  const name = formText(formData, "name");
+  const requestedSlug = formText(formData, "slug") || name;
+  const slug = requestedSlug
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  const price = formNumber(formData, "price");
+  const stock = Math.max(0, Math.trunc(formNumber(formData, "stock")));
+
+  if (!name || !slug || price <= 0) {
+    throw new Error("Name, slug, and a positive price are required");
+  }
+
+  await writeClient
+    .patch(id)
+    .set({
+      name,
+      slug: { _type: "slug", current: slug },
+      description: formText(formData, "description"),
+      price,
+      stock,
+      material: formText(formData, "material") || null,
+      color: formText(formData, "color") || null,
+      dimensions: formText(formData, "dimensions"),
+      featured: formData.get("featured") === "on",
+      assemblyRequired: formData.get("assemblyRequired") === "on",
+    })
+    .commit();
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/inventory");
+  revalidatePath(`/admin/inventory/${id}`);
+  revalidatePath(`/shop/products/${slug}`);
+}
+
+export async function deleteProductAndRedirect(id: string) {
+  await requireAdminAccess();
+  assertDocumentId(id);
+
+  await writeClient.delete(id);
+  revalidatePath("/admin");
+  revalidatePath("/admin/inventory");
+  redirect("/admin/inventory");
+}
+
+export async function uploadProductImage(id: string, formData: FormData) {
+  await requireAdminAccess();
+  assertDocumentId(id);
+
+  const file = formData.get("image");
+  if (!(file instanceof File) || file.size === 0) return;
+  if (!file.type.startsWith("image/")) {
+    throw new Error("Only image files can be uploaded");
+  }
+  if (file.size > 8 * 1024 * 1024) {
+    throw new Error("Images must be 8 MB or smaller");
+  }
+
+  const asset = await writeClient.assets.upload("image", file, {
+    filename: file.name,
+  });
+  await writeClient
+    .patch(id)
+    .setIfMissing({ images: [] })
+    .append("images", [
+      {
+        _key: crypto.randomUUID(),
+        _type: "image",
+        asset: { _type: "reference", _ref: asset._id },
+      },
+    ])
+    .commit();
+
+  revalidatePath("/admin/inventory");
+  revalidatePath(`/admin/inventory/${id}`);
+}
+
+export async function removeProductImage(id: string, imageKey: string) {
+  await requireAdminAccess();
+  assertDocumentId(id);
+  if (!SANITY_ARRAY_KEY_PATTERN.test(imageKey)) {
+    throw new Error("Invalid image key");
+  }
+
+  await writeClient.patch(id).unset([`images[_key == "${imageKey}"]`]).commit();
+  revalidatePath("/admin/inventory");
+  revalidatePath(`/admin/inventory/${id}`);
+}
+
+export async function updateOrderStatusFromForm(
+  id: string,
+  formData: FormData,
+) {
+  assertDocumentId(id);
+  const status = formText(formData, "status");
+  const allowedStatuses = new Set([
+    "inventory_issue",
+    "paid",
+    "shipped",
+    "delivered",
+    "cancelled",
+  ]);
+  if (!allowedStatuses.has(status)) throw new Error("Invalid order status");
+
+  await updateOrderStatus(id, status);
+}
+
+export async function updateOrderAddressFromForm(
+  id: string,
+  formData: FormData,
+) {
+  await requireAdminAccess();
+  assertDocumentId(id);
+
+  await writeClient
+    .patch(id)
+    .set({
+      "address.name": formText(formData, "name"),
+      "address.line1": formText(formData, "line1"),
+      "address.line2": formText(formData, "line2"),
+      "address.city": formText(formData, "city"),
+      "address.state": formText(formData, "state"),
+      "address.postcode": formText(formData, "postcode"),
+      "address.country": formText(formData, "country"),
+      "address.phone": formText(formData, "phone"),
+    })
+    .commit();
+
+  revalidatePath(`/admin/orders/${id}`);
 }

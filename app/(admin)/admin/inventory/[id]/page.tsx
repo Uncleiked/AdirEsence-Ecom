@@ -1,460 +1,39 @@
-"use client";
-
-import { Suspense, use } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import {
-  useDocument,
-  useEditDocument,
-  useDocumentProjection,
-  type DocumentHandle,
-} from "@sanity/sdk-react";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { notFound } from "next/navigation";
+import { ArrowLeft, ExternalLink, Trash2, Upload } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Switch } from "@/components/ui/switch";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  PublishButton,
-  RevertButton,
-  ImageUploader,
-  DeleteButton,
-} from "@/components/admin";
+  deleteProductAndRedirect,
+  removeProductImage,
+  saveProductFromForm,
+  uploadProductImage,
+} from "@/sanity/lib/admin-actions";
+import { getProductById } from "@/sanity/lib/admin-queries";
 
-const MATERIALS = [
-  { value: "wood", label: "Wood" },
-  { value: "metal", label: "Metal" },
-  { value: "fabric", label: "Fabric" },
-  { value: "leather", label: "Leather" },
-  { value: "glass", label: "Glass" },
-];
+export const dynamic = "force-dynamic";
 
-const COLORS = [
-  { value: "black", label: "Black" },
-  { value: "white", label: "White" },
-  { value: "oak", label: "Oak" },
-  { value: "walnut", label: "Walnut" },
-  { value: "grey", label: "Grey" },
-  { value: "natural", label: "Natural" },
-];
+const MATERIALS = ["wood", "metal", "fabric", "leather", "glass"];
+const COLORS = ["black", "white", "oak", "walnut", "grey", "natural"];
 
-// Field editor components
-function NameEditor(handle: DocumentHandle) {
-  const { data: name } = useDocument({ ...handle, path: "name" });
-  const editName = useEditDocument({ ...handle, path: "name" });
-
-  return (
-    <Input
-      value={(name as string) ?? ""}
-      onChange={(e) => editName(e.target.value)}
-      placeholder="Product name"
-    />
-  );
-}
-
-function SlugEditor(handle: DocumentHandle) {
-  const { data: slug } = useDocument({ ...handle, path: "slug" });
-  const editSlug = useEditDocument({ ...handle, path: "slug" });
-  const slugValue = (slug as { current?: string })?.current ?? "";
-
-  return (
-    <Input
-      value={slugValue}
-      onChange={(e) => editSlug({ _type: "slug", current: e.target.value })}
-      placeholder="product-slug"
-    />
-  );
-}
-
-function DescriptionEditor(handle: DocumentHandle) {
-  const { data: description } = useDocument({ ...handle, path: "description" });
-  const editDescription = useEditDocument({ ...handle, path: "description" });
-
-  return (
-    <Textarea
-      value={(description as string) ?? ""}
-      onChange={(e) => editDescription(e.target.value)}
-      placeholder="Product description..."
-      rows={4}
-    />
-  );
-}
-
-function PriceEditor(handle: DocumentHandle) {
-  const { data: price } = useDocument({ ...handle, path: "price" });
-  const editPrice = useEditDocument({ ...handle, path: "price" });
-
-  return (
-    <Input
-      type="number"
-      step="0.01"
-      min="0"
-      value={(price as number) ?? ""}
-      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-        editPrice(parseFloat(e.target.value) || 0)
-      }
-      placeholder="0.00"
-    />
-  );
-}
-
-function StockEditor(handle: DocumentHandle) {
-  const { data: stock } = useDocument({ ...handle, path: "stock" });
-  const editStock = useEditDocument({ ...handle, path: "stock" });
-
-  return (
-    <Input
-      type="number"
-      min="0"
-      value={(stock as number) ?? 0}
-      onChange={(e) => editStock(parseInt(e.target.value) || 0)}
-      placeholder="0"
-    />
-  );
-}
-
-function MaterialEditor(handle: DocumentHandle) {
-  const { data: material } = useDocument({ ...handle, path: "material" });
-  const editMaterial = useEditDocument({ ...handle, path: "material" });
-
-  return (
-    <Select
-      value={(material as string) ?? ""}
-      onValueChange={(value) => editMaterial(value)}
-    >
-      <SelectTrigger>
-        <SelectValue placeholder="Select material" />
-      </SelectTrigger>
-      <SelectContent>
-        {MATERIALS.map((m) => (
-          <SelectItem key={m.value} value={m.value}>
-            {m.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
-
-function ColorEditor(handle: DocumentHandle) {
-  const { data: color } = useDocument({ ...handle, path: "color" });
-  const editColor = useEditDocument({ ...handle, path: "color" });
-
-  return (
-    <Select
-      value={(color as string) ?? ""}
-      onValueChange={(value) => editColor(value)}
-    >
-      <SelectTrigger>
-        <SelectValue placeholder="Select color" />
-      </SelectTrigger>
-      <SelectContent>
-        {COLORS.map((c) => (
-          <SelectItem key={c.value} value={c.value}>
-            {c.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
-
-function DimensionsEditor(handle: DocumentHandle) {
-  const { data: dimensions } = useDocument({ ...handle, path: "dimensions" });
-  const editDimensions = useEditDocument({ ...handle, path: "dimensions" });
-
-  return (
-    <Input
-      value={(dimensions as string) ?? ""}
-      onChange={(e) => editDimensions(e.target.value)}
-      placeholder='e.g., "120cm x 80cm x 75cm"'
-    />
-  );
-}
-
-function FeaturedEditor(handle: DocumentHandle) {
-  const { data: featured } = useDocument({ ...handle, path: "featured" });
-  const editFeatured = useEditDocument({ ...handle, path: "featured" });
-
-  return (
-    <Switch
-      checked={(featured as boolean) ?? false}
-      onCheckedChange={(checked: boolean) => editFeatured(checked)}
-    />
-  );
-}
-
-function AssemblyEditor(handle: DocumentHandle) {
-  const { data: assemblyRequired } = useDocument({
-    ...handle,
-    path: "assemblyRequired",
-  });
-  const editAssembly = useEditDocument({
-    ...handle,
-    path: "assemblyRequired",
-  });
-
-  return (
-    <Switch
-      checked={(assemblyRequired as boolean) ?? false}
-      onCheckedChange={(checked: boolean) => editAssembly(checked)}
-    />
-  );
-}
-
-interface ProductSlugProjection {
-  slug: {
-    current: string;
-  } | null;
-}
-
-function ProductStoreLink(handle: DocumentHandle) {
-  const { data } = useDocumentProjection<ProductSlugProjection>({
-    ...handle,
-    projection: `{ slug }`,
-  });
-
-  const slug = data?.slug?.current;
-
-  if (!slug) return null;
-
-  return (
-    <Link
-      href={`/shop/products/${slug}`}
-      target="_blank"
-      className="flex items-center justify-center gap-1 text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-    >
-      View on store
-      <ExternalLink className="h-3.5 w-3.5" />
-    </Link>
-  );
-}
-
-function ProductDetailContent({ handle }: { handle: DocumentHandle }) {
-  const { data: name } = useDocument({ ...handle, path: "name" });
-
-  return (
-    <div className="space-y-6 sm:space-y-8">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 sm:text-2xl">
-            {(name as string) || "New Product"}
-          </h1>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Edit product details
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <DeleteButton handle={handle} />
-          <Suspense fallback={null}>
-            <RevertButton {...handle} />
-          </Suspense>
-          <Suspense fallback={null}>
-            <PublishButton {...handle} />
-          </Suspense>
-        </div>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-3 lg:gap-8">
-        {/* Main Form */}
-        <div className="space-y-6 lg:col-span-2">
-          {/* Basic Info */}
-          <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:p-6">
-            <h2 className="mb-4 font-semibold text-zinc-900 dark:text-zinc-100">
-              Basic Information
-            </h2>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
-                <Suspense fallback={<Skeleton className="h-10" />}>
-                  <NameEditor {...handle} />
-                </Suspense>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="slug">Slug</Label>
-                <Suspense fallback={<Skeleton className="h-10" />}>
-                  <SlugEditor {...handle} />
-                </Suspense>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Suspense fallback={<Skeleton className="h-24" />}>
-                  <DescriptionEditor {...handle} />
-                </Suspense>
-              </div>
-            </div>
-          </div>
-
-          {/* Pricing & Inventory */}
-          <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:p-6">
-            <h2 className="mb-4 font-semibold text-zinc-900 dark:text-zinc-100">
-              Pricing & Inventory
-            </h2>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="price">Price (₦)</Label>
-                <Suspense fallback={<Skeleton className="h-10" />}>
-                  <PriceEditor {...handle} />
-                </Suspense>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="stock">Stock</Label>
-                <Suspense fallback={<Skeleton className="h-10" />}>
-                  <StockEditor {...handle} />
-                </Suspense>
-              </div>
-            </div>
-          </div>
-
-          {/* Attributes */}
-          <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:p-6">
-            <h2 className="mb-4 font-semibold text-zinc-900 dark:text-zinc-100">
-              Attributes
-            </h2>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Material</Label>
-                <Suspense fallback={<Skeleton className="h-10" />}>
-                  <MaterialEditor {...handle} />
-                </Suspense>
-              </div>
-              <div className="space-y-2">
-                <Label>Color</Label>
-                <Suspense fallback={<Skeleton className="h-10" />}>
-                  <ColorEditor {...handle} />
-                </Suspense>
-              </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label>Dimensions</Label>
-                <Suspense fallback={<Skeleton className="h-10" />}>
-                  <DimensionsEditor {...handle} />
-                </Suspense>
-              </div>
-            </div>
-          </div>
-
-          {/* Options */}
-          <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:p-6">
-            <h2 className="mb-4 font-semibold text-zinc-900 dark:text-zinc-100">
-              Options
-            </h2>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-zinc-900 dark:text-zinc-100">
-                    Featured Product
-                  </p>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                    Show on homepage and promotions
-                  </p>
-                </div>
-                <Suspense fallback={<Skeleton className="h-6 w-11" />}>
-                  <FeaturedEditor {...handle} />
-                </Suspense>
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-zinc-900 dark:text-zinc-100">
-                    Assembly Required
-                  </p>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                    Customer will need to assemble
-                  </p>
-                </div>
-                <Suspense fallback={<Skeleton className="h-6 w-11" />}>
-                  <AssemblyEditor {...handle} />
-                </Suspense>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Image Upload */}
-          <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:p-6">
-            <h2 className="mb-4 font-semibold text-zinc-900 dark:text-zinc-100">
-              Product Images
-            </h2>
-            <ImageUploader {...handle} />
-            <div className="mt-4">
-              <Suspense fallback={null}>
-                <ProductStoreLink {...handle} />
-              </Suspense>
-            </div>
-          </div>
-
-          {/* Studio Link */}
-          <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:p-6">
-            <h2 className="font-semibold text-zinc-900 dark:text-zinc-100">
-              Advanced Editing
-            </h2>
-            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-              Set category and other options in Sanity Studio.
-            </p>
-            <Link
-              href={`/studio/structure/product;${handle.documentId}`}
-              target="_blank"
-              className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-zinc-900 hover:text-zinc-600 dark:text-zinc-100 dark:hover:text-zinc-300"
-            >
-              Open in Studio
-              <ExternalLink className="h-3.5 w-3.5" />
-            </Link>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ProductDetailSkeleton() {
-  return (
-    <div className="space-y-6 sm:space-y-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <Skeleton className="h-7 w-48 sm:h-8" />
-          <Skeleton className="mt-2 h-4 w-32" />
-        </div>
-        <Skeleton className="h-10 w-[140px]" />
-      </div>
-      <div className="grid gap-6 lg:grid-cols-3 lg:gap-8">
-        <div className="space-y-6 lg:col-span-2">
-          <Skeleton className="h-64 rounded-xl" />
-          <Skeleton className="h-40 rounded-xl" />
-          <Skeleton className="h-48 rounded-xl" />
-        </div>
-        <div className="space-y-6">
-          <Skeleton className="h-80 rounded-xl" />
-          <Skeleton className="h-32 rounded-xl" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-interface PageProps {
+interface ProductDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
-export default function ProductDetailPage({ params }: PageProps) {
-  const { id } = use(params);
+export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
+  const { id } = await params;
+  const product = await getProductById(id);
+  if (!product) notFound();
 
-  const handle: DocumentHandle = {
-    documentId: id,
-    documentType: "product",
-  };
+  const saveAction = saveProductFromForm.bind(null, product._id);
+  const deleteAction = deleteProductAndRedirect.bind(null, product._id);
+  const uploadAction = uploadProductImage.bind(null, product._id);
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Back Link */}
       <Link
         href="/admin/inventory"
         className="inline-flex items-center text-sm text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
@@ -463,10 +42,237 @@ export default function ProductDetailPage({ params }: PageProps) {
         Back to Inventory
       </Link>
 
-      {/* Product Detail */}
-      <Suspense fallback={<ProductDetailSkeleton />}>
-        <ProductDetailContent handle={handle} />
-      </Suspense>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 sm:text-2xl">
+            {product.name ?? "Untitled Product"}
+          </h1>
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            Changes are saved securely through the server.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          {product.slug && (
+            <Button asChild variant="outline">
+              <Link href={`/shop/products/${product.slug}`} target="_blank">
+                View product
+                <ExternalLink className="h-4 w-4" />
+              </Link>
+            </Button>
+          )}
+          <form action={deleteAction}>
+            <Button type="submit" variant="destructive">
+              <Trash2 className="h-4 w-4" />
+              Delete
+            </Button>
+          </form>
+        </div>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-3 lg:gap-8">
+        <form action={saveAction} className="space-y-6 lg:col-span-2">
+          <section className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:p-6">
+            <h2 className="mb-4 font-semibold text-zinc-900 dark:text-zinc-100">
+              Basic Information
+            </h2>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Name</Label>
+                <Input id="name" name="name" defaultValue={product.name ?? ""} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="slug">Slug</Label>
+                <Input id="slug" name="slug" defaultValue={product.slug ?? ""} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  name="description"
+                  defaultValue={product.description ?? ""}
+                  rows={5}
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:p-6">
+            <h2 className="mb-4 font-semibold text-zinc-900 dark:text-zinc-100">
+              Pricing & Inventory
+            </h2>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="price">Price (₦)</Label>
+                <Input
+                  id="price"
+                  name="price"
+                  type="number"
+                  min="1"
+                  step="1"
+                  defaultValue={product.price ?? 1}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="stock">Stock</Label>
+                <Input
+                  id="stock"
+                  name="stock"
+                  type="number"
+                  min="0"
+                  step="1"
+                  defaultValue={product.stock ?? 0}
+                  required
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:p-6">
+            <h2 className="mb-4 font-semibold text-zinc-900 dark:text-zinc-100">
+              Attributes
+            </h2>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="material">Material</Label>
+                <select
+                  id="material"
+                  name="material"
+                  defaultValue={product.material ?? ""}
+                  className="h-9 w-full rounded-md border border-zinc-200 bg-transparent px-3 text-sm dark:border-zinc-700"
+                >
+                  <option value="">Not specified</option>
+                  {MATERIALS.map((material) => (
+                    <option key={material} value={material}>
+                      {material[0].toUpperCase() + material.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="color">Color</Label>
+                <select
+                  id="color"
+                  name="color"
+                  defaultValue={product.color ?? ""}
+                  className="h-9 w-full rounded-md border border-zinc-200 bg-transparent px-3 text-sm dark:border-zinc-700"
+                >
+                  <option value="">Not specified</option>
+                  {COLORS.map((color) => (
+                    <option key={color} value={color}>
+                      {color[0].toUpperCase() + color.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="dimensions">Dimensions</Label>
+                <Input
+                  id="dimensions"
+                  name="dimensions"
+                  defaultValue={product.dimensions ?? ""}
+                  placeholder='e.g. 120cm x 80cm x 75cm'
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:p-6">
+            <h2 className="mb-4 font-semibold text-zinc-900 dark:text-zinc-100">
+              Options
+            </h2>
+            <div className="space-y-4">
+              <label className="flex items-center justify-between gap-4">
+                <span>
+                  <span className="block font-medium text-zinc-900 dark:text-zinc-100">
+                    Featured Product
+                  </span>
+                  <span className="text-sm text-zinc-500">Show on homepage and promotions</span>
+                </span>
+                <input
+                  type="checkbox"
+                  name="featured"
+                  defaultChecked={product.featured ?? false}
+                  className="h-5 w-5 accent-zinc-900"
+                />
+              </label>
+              <label className="flex items-center justify-between gap-4">
+                <span>
+                  <span className="block font-medium text-zinc-900 dark:text-zinc-100">
+                    Assembly Required
+                  </span>
+                  <span className="text-sm text-zinc-500">Customer needs to assemble it</span>
+                </span>
+                <input
+                  type="checkbox"
+                  name="assemblyRequired"
+                  defaultChecked={product.assemblyRequired ?? false}
+                  className="h-5 w-5 accent-zinc-900"
+                />
+              </label>
+            </div>
+          </section>
+
+          <Button type="submit" size="lg">
+            Save product
+          </Button>
+        </form>
+
+        <aside className="space-y-6">
+          <section className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:p-6">
+            <h2 className="font-semibold text-zinc-900 dark:text-zinc-100">
+              Product Images
+            </h2>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              {product.images?.map((image) => (
+                <div key={image._key} className="space-y-2">
+                  <div className="relative aspect-square overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
+                    {image.url && (
+                      <Image
+                        src={image.url}
+                        alt={product.name ?? "Product image"}
+                        fill
+                        className="object-cover"
+                        sizes="160px"
+                      />
+                    )}
+                  </div>
+                  <form action={removeProductImage.bind(null, product._id, image._key)}>
+                    <Button type="submit" size="sm" variant="outline" className="w-full">
+                      Remove
+                    </Button>
+                  </form>
+                </div>
+              ))}
+            </div>
+            <form action={uploadAction} className="mt-4 space-y-3">
+              <Input name="image" type="file" accept="image/*" required />
+              <Button type="submit" variant="outline" className="w-full">
+                <Upload className="h-4 w-4" />
+                Upload image
+              </Button>
+            </form>
+          </section>
+
+          <section className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 sm:p-6">
+            <h2 className="font-semibold text-zinc-900 dark:text-zinc-100">
+              Advanced Editing
+            </h2>
+            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+              Categories and schema-level fields remain available in Sanity Studio.
+              Studio uses Sanity membership authentication separately from Clerk.
+            </p>
+            <Link
+              href={`/studio/structure/product;${product._id}`}
+              target="_blank"
+              className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-zinc-900 hover:text-zinc-600 dark:text-zinc-100"
+            >
+              Open Sanity Studio
+              <ExternalLink className="h-3.5 w-3.5" />
+            </Link>
+          </section>
+        </aside>
+      </div>
     </div>
   );
 }

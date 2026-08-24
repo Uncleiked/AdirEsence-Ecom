@@ -1,120 +1,49 @@
-"use client";
-
-import { Suspense, useState } from "react";
-import { useDocuments } from "@sanity/sdk-react";
-import { ShoppingCart } from "lucide-react";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody } from "@/components/ui/table";
+import Link from "next/link";
+import { Search, ShoppingCart } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/ui/empty-state";
+import { Input } from "@/components/ui/input";
 import {
-  OrderRow,
-  OrderRowSkeleton,
-  AdminSearch,
-  useOrderSearchFilter,
-  OrderTableHeader,
-} from "@/components/admin";
-import { ORDER_STATUS_TABS } from "@/lib/constants/orderStatus";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  getOrderStatus,
+  ORDER_STATUS_TABS,
+} from "@/lib/constants/orderStatus";
+import {
+  formatDate,
+  formatOrderNumber,
+  formatPrice,
+} from "@/lib/utils";
+import { getAllOrders } from "@/sanity/lib/admin-queries";
 
-interface OrderListContentProps {
-  statusFilter: string;
-  searchFilter?: string;
+export const dynamic = "force-dynamic";
+
+interface OrdersPageProps {
+  searchParams: Promise<{ q?: string; status?: string }>;
 }
 
-function OrderListContent({
-  statusFilter,
-  searchFilter,
-}: OrderListContentProps) {
-  // Combine status and search filters
-  const filters: string[] = [];
-  if (statusFilter !== "all") {
-    filters.push(`status == "${statusFilter}"`);
-  }
-  if (searchFilter) {
-    filters.push(`(${searchFilter})`);
-  }
-  const filter = filters.length > 0 ? filters.join(" && ") : undefined;
-
-  const {
-    data: orders,
-    hasMore,
-    loadMore,
-    isPending,
-  } = useDocuments({
-    documentType: "order",
-    filter,
-    orderings: [{ field: "_createdAt", direction: "desc" }],
-    batchSize: 20,
+export default async function OrdersPage({ searchParams }: OrdersPageProps) {
+  const [{ q = "", status = "all" }, orders] = await Promise.all([
+    searchParams,
+    getAllOrders(),
+  ]);
+  const search = q.trim().toLowerCase();
+  const visibleOrders = orders.filter((order) => {
+    if (status !== "all" && order.status !== status) return false;
+    if (!search) return true;
+    return [order.orderNumber, order.email]
+      .filter(Boolean)
+      .some((value) => value!.toLowerCase().includes(search));
   });
-
-  if (!orders || orders.length === 0) {
-    const description = searchFilter
-      ? "Try adjusting your search terms."
-      : statusFilter === "all"
-        ? "Orders will appear here when customers make purchases."
-        : `No ${statusFilter} orders at the moment.`;
-
-    return (
-      <EmptyState
-        icon={ShoppingCart}
-        title="No orders found"
-        description={description}
-      />
-    );
-  }
-
-  return (
-    <>
-      <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-        <Table>
-          <OrderTableHeader />
-          <TableBody>
-            {orders.map((handle) => (
-              <OrderRow key={handle.documentId} {...handle} />
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-
-      {hasMore && (
-        <div className="mt-4 flex justify-center">
-          <Button
-            variant="outline"
-            onClick={() => loadMore()}
-            disabled={isPending}
-          >
-            {isPending ? "Loading..." : "Load More"}
-          </Button>
-        </div>
-      )}
-    </>
-  );
-}
-
-function OrderListSkeleton() {
-  return (
-    <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-      <Table>
-        <OrderTableHeader />
-        <TableBody>
-          {[1, 2, 3, 4, 5].map((i) => (
-            <OrderRowSkeleton key={i} />
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  );
-}
-
-export default function OrdersPage() {
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("");
-  const { filter: searchFilter, isSearching } =
-    useOrderSearchFilter(searchQuery);
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 sm:text-3xl">
           Orders
@@ -124,44 +53,103 @@ export default function OrdersPage() {
         </p>
       </div>
 
-      {/* Search and Tabs */}
-      <div className="flex flex-col gap-4">
-        <AdminSearch
-          placeholder="Search by order # or email..."
-          value={searchQuery}
-          onChange={setSearchQuery}
-          className="w-full sm:max-w-xs"
-        />
-        <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-          <Tabs value={statusFilter} onValueChange={setStatusFilter}>
-            <TabsList className="w-max">
-              {ORDER_STATUS_TABS.map((tab) => (
-                <TabsTrigger
-                  key={tab.value}
-                  value={tab.value}
-                  className="text-xs sm:text-sm"
-                >
-                  {tab.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+      <form className="flex w-full gap-2 sm:max-w-md">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+          <Input
+            name="q"
+            defaultValue={q}
+            placeholder="Search by order number or email..."
+            className="pl-9"
+          />
         </div>
+        {status !== "all" && <input type="hidden" name="status" value={status} />}
+        <Button type="submit" variant="outline">
+          Search
+        </Button>
+      </form>
+
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {ORDER_STATUS_TABS.map((tab) => (
+          <Button
+            key={tab.value}
+            asChild
+            size="sm"
+            variant={status === tab.value ? "default" : "outline"}
+          >
+            <Link
+              href={`/admin/orders?status=${tab.value}${q ? `&q=${encodeURIComponent(q)}` : ""}`}
+            >
+              {tab.label}
+            </Link>
+          </Button>
+        ))}
       </div>
 
-      {/* Order List */}
-      {isSearching ? (
-        <OrderListSkeleton />
+      {visibleOrders.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-zinc-300 py-16 text-center dark:border-zinc-700">
+          <ShoppingCart className="mx-auto h-10 w-10 text-zinc-400" />
+          <h2 className="mt-3 font-semibold text-zinc-900 dark:text-zinc-100">
+            No orders found
+          </h2>
+          <p className="mt-1 text-sm text-zinc-500">
+            Orders will appear here when customers complete checkout.
+          </p>
+        </div>
       ) : (
-        <Suspense
-          key={`${statusFilter}-${searchFilter ?? ""}`}
-          fallback={<OrderListSkeleton />}
-        >
-          <OrderListContent
-            statusFilter={statusFilter}
-            searchFilter={searchFilter}
-          />
-        </Suspense>
+        <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Order</TableHead>
+                <TableHead className="hidden sm:table-cell">Email</TableHead>
+                <TableHead className="hidden md:table-cell">Items</TableHead>
+                <TableHead>Total</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="hidden md:table-cell">Date</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {visibleOrders.map((order) => {
+                const orderStatus = getOrderStatus(order.status);
+                const StatusIcon = orderStatus.icon;
+                return (
+                  <TableRow key={order._id}>
+                    <TableCell>
+                      <Link
+                        href={`/admin/orders/${order._id}`}
+                        className="font-medium text-zinc-900 hover:underline dark:text-zinc-100"
+                      >
+                        #{formatOrderNumber(order.orderNumber)}
+                      </Link>
+                      <p className="mt-1 max-w-44 truncate text-xs text-zinc-500 sm:hidden">
+                        {order.email ?? "No email"}
+                      </p>
+                    </TableCell>
+                    <TableCell className="hidden max-w-64 truncate sm:table-cell">
+                      {order.email ?? "—"}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {order.itemCount}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {formatPrice(order.total)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={`${orderStatus.color} gap-1`}>
+                        <StatusIcon className="h-3 w-3" />
+                        <span className="hidden sm:inline">{orderStatus.label}</span>
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {formatDate(order.createdAt, "long", "—")}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </div>
   );
