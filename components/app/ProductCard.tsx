@@ -153,7 +153,7 @@ export function ProductCard({ product }: ProductCardProps) {
           <Button asChild className="h-11 w-full">
             <Link href={`/shop/products/${product.slug}`}>
               <Ruler className="mr-2 h-4 w-4" />
-              {sizingMode === "alpha" ? "Choose size" : "Choose measurements"}
+              {sizingMode === "alpha" ? "Choose size" : "Choose meas."}
             </Link>
           </Button>
         )}
